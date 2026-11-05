@@ -1,0 +1,55 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": {
+    "x": [
+      -2,
+      2
+    ],
+    "y": [
+      -2,
+      2
+    ],
+    "z": [
+      -4,
+      5
+    ]
+  },
+  "camera": {
+    "azimuth": -40,
+    "elevation": 22
+  },
+  "elements": [
+    {
+      "id": "f",
+      "type": "surface",
+      "z": "4 - x^2 - y^2",
+      "opacity": 0.85
+    },
+    {
+      "type": "tangentPlane",
+      "to": "f",
+      "at": [
+        1,
+        1
+      ],
+      "size": 1.8,
+      "label": {
+        "tex": "z = 2 - 2(x-1) - 2(y-1)"
+      }
+    },
+    {
+      "id": "P",
+      "type": "point",
+      "on": "f",
+      "over": [
+        1,
+        1
+      ],
+      "label": {
+        "text": "P"
+      }
+    }
+  ],
+  "describe": "Surface z = 4 − x² − y² with its tangent plane at P = (1, 1, 2): z = 2 − 2(x − 1) − 2(y − 1)."
+}

@@ -3,17 +3,19 @@ import { ChartFigure } from './chart.ts';
 import { NumberLineFigure } from './numberLine.ts';
 import { Plot2dFigure } from './plot2d.ts';
 import { SignChartFigure } from './signChart.ts';
+import { Plot3dFigure } from './plot3d.ts';
 
 export * from './common.ts';
 export * from './plot2d.ts';
 export * from './numberLine.ts';
 export * from './signChart.ts';
 export * from './chart.ts';
+export * from './plot3d.ts';
 
-export const FIGURE_KINDS = ['plot2d', 'numberLine', 'signChart', 'chart'] as const;
+export const FIGURE_KINDS = ['plot2d', 'plot3d', 'numberLine', 'signChart', 'chart'] as const;
 
 /** Any figure description, by `kind`. */
-export const Figure = z.union([Plot2dFigure, NumberLineFigure, SignChartFigure, ChartFigure]);
+export const Figure = z.union([Plot2dFigure, Plot3dFigure, NumberLineFigure, SignChartFigure, ChartFigure]);
 
 /** A validated figure (defaults filled in). */
 export type Figure = z.infer<typeof Figure>;

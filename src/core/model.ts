@@ -1,3 +1,4 @@
+import { autoLevels, sampleGrid, type Fxy } from './contour.ts';
 import {
   compile,
   derive,
@@ -17,6 +18,8 @@ import type {
   Plot2dFigure,
   FigureIssue,
   FunctionEl,
+  ContourEl,
+  VectorEl,
   IntersectionEl,
   LineEl,
   MathLabelEl,
@@ -62,10 +65,11 @@ export type Item = ItemBase &
     | { type: 'function'; el: FunctionEl; fn: FnInfo }
     | { type: 'region'; el: RegionEl; top: FnInfo; bottom: FnInfo | null; from: number; to: number }
     | { type: 'point'; el: PointEl | IntersectionEl; at: Vec; on: FnInfo | null }
-    | { type: 'segment'; el: SegmentEl | TangentEl; from: Vec; to: Vec }
+    | { type: 'segment'; el: SegmentEl | TangentEl | VectorEl; from: Vec; to: Vec }
     | { type: 'line'; el: LineEl | TangentEl; p: Vec; q: Vec }
     | { type: 'text'; el: TextEl; at: Vec }
     | { type: 'mathLabel'; el: MathLabelEl; at: Vec }
+    | { type: 'contour'; el: ContourEl; fn: Fxy; levels: number[]; mesh: number }
   );
 
 export interface FigureModel {
@@ -112,14 +116,16 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
   };
   const fnIds = [...ids.keys()].filter((id) => kindOf(id) === 'function');
   const pointIds = [...ids.keys()].filter((id) => POINT_LIKE.has(kindOf(id)!));
-  const others = new Map([...ids.keys()].filter((id) => !fnIds.includes(id) && !pointIds.includes(id)).map((id) => [id, kindOf(id)!]));
+  // Contours with an id are two-variable functions: g(1, 2), g_x(1, 2) (e.g. for gradient vectors).
+  const fn2Ids = [...ids.keys()].filter((id) => kindOf(id) === 'contour');
+  const others = new Map([...ids.keys()].filter((id) => !fnIds.includes(id) && !pointIds.includes(id) && !fn2Ids.includes(id)).map((id) => [id, kindOf(id)!]));
 
   // --- parse every expression once, collecting dependencies per element
   const nodes = new Map<string, Node>(); // by path
   const deps: Set<string>[] = els.map(() => new Set<string>());
   const parseAt = (i: number, path: string, src: string, variables: string[]) => {
     try {
-      const node = parseExpr(src, { variables, functions: fnIds, points: pointIds, others });
+      const node = parseExpr(src, { variables, functions: fnIds, points: pointIds, functions2: fn2Ids, others });
       nodes.set(path, node);
       referencedIds(node).forEach((d) => deps[i]!.add(d));
     } catch (e) {
@@ -169,6 +175,12 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
         pointRefAt(i, at(i, 'from'), el.from);
         pointRefAt(i, at(i, 'to'), el.to);
         break;
+      case 'vector':
+        pointRefAt(i, at(i, 'from'), el.from);
+        pointRefAt(i, at(i, 'to'), el.to);
+        coordAt(i, at(i, 'components[0]'), el.components?.[0]);
+        coordAt(i, at(i, 'components[1]'), el.components?.[1]);
+        break;
       case 'line':
         el.through?.forEach((p, k) => pointRefAt(i, at(i, `through[${k}]`), p));
         pointRefAt(i, at(i, 'point'), el.point);
@@ -185,6 +197,9 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
       case 'intersection':
         el.of.forEach((id, k) => requireKind(i, at(i, `of[${k}]`), id, CURVE, 'function or line'));
         coordAt(i, at(i, 'near'), el.near);
+        break;
+      case 'contour':
+        parseAt(i, at(i, 'f'), el.f, ['x', 'y']);
         break;
     }
     if (el.animate && typeof el.animate === 'object') coordAt(i, at(i, 'animate.from'), el.animate.from);
@@ -225,6 +240,29 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
     return k === 0 ? f.fn : derivative(f, k);
   };
   const pointTable = (id: string) => points.get(id);
+  const fn2Cache = new Map<string, Fxy>();
+  const table2 = (id: string, partial: string): Fxy | undefined => {
+    const key = `${id}:${partial}`;
+    const hit = fn2Cache.get(key);
+    if (hit) return hit;
+    const i = ids.get(id);
+    let node = i === undefined ? undefined : nodes.get(at(i, 'f'));
+    if (!node) return undefined;
+    let f: Fxy;
+    try {
+      for (const c of partial) node = derive(node, c);
+      f = compile(node, table, pointTable, { vars: ['x', 'y'], functions2: table2 }) as Fxy;
+    } catch (e) {
+      if (!(e instanceof NoSymbolicDerivative)) throw e;
+      // numeric fallback for the last partial
+      const prev = table2(id, partial.slice(0, -1))!;
+      const h = 1e-5;
+      f = partial.endsWith('x') ? (x, y) => (prev(x + h, y) - prev(x - h, y)) / (2 * h) : (x, y) => (prev(x, y + h) - prev(x, y - h)) / (2 * h);
+    }
+    fn2Cache.set(key, f);
+    return f;
+  };
+  const copts = { functions2: table2 };
 
   /** k-th derivative of a function element: symbolic where possible, numeric otherwise. */
   function derivative(f: FnInfo, k: number): Fn1 {
@@ -236,7 +274,7 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
     try {
       if (!prevNode) throw new NoSymbolicDerivative(`${f.id}${"'".repeat(k - 1)}`);
       const node = derive(prevNode);
-      entry = { node, fn: compile(node, table, pointTable) };
+      entry = { node, fn: compile(node, table, pointTable, copts) };
     } catch (e) {
       if (!(e instanceof NoSymbolicDerivative)) throw e;
       const prev = k === 1 ? f.fn : derivative(f, k - 1);
@@ -253,7 +291,7 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
     }
     const node = nodes.get(path);
     if (!node) return NaN;
-    const v = compile(node, table, pointTable)(NaN);
+    const v = compile(node, table, pointTable, copts)(NaN);
     if (!Number.isFinite(v)) err(path, `"${c}" is not a finite number (got ${v})`);
     return v;
   };
@@ -276,10 +314,10 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
     if (!a) return undefined;
     const o = typeof a === 'object' ? a : {};
     const natural: AnimationKind =
-      el.type === 'region' ? 'fill' : el.type === 'point' && el.on ? 'move' : ['function', 'line', 'tangent', 'segment'].includes(el.type) ? 'draw' : 'fade';
+      el.type === 'region' ? 'fill' : el.type === 'point' && el.on ? 'move' : ['function', 'line', 'tangent', 'segment', 'contour', 'vector'].includes(el.type) ? 'draw' : 'fade';
     const kind = o.kind ?? natural;
     const allowed: Record<AnimationKind, boolean> = {
-      draw: ['function', 'line', 'tangent', 'segment'].includes(el.type),
+      draw: ['function', 'line', 'tangent', 'segment', 'contour', 'vector'].includes(el.type),
       fill: el.type === 'region',
       move: el.type === 'point' && !!el.on,
       fade: true,
@@ -322,7 +360,7 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
           index: i,
           el,
           node,
-          fn: compile(node, table, pointTable),
+          fn: compile(node, table, pointTable, copts),
           range: [view.x[0], view.x[1]],
           breakpoints: [],
         };
@@ -422,6 +460,13 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
       case 'segment':
         items.push({ type: 'segment', index: i, el, from: vec(el.from, at(i, 'from')), to: vec(el.to, at(i, 'to')), anim: animOf(el, i, null) });
         break;
+      case 'vector': {
+        const from = vec(el.from, at(i, 'from'));
+        const to: Vec = el.to !== undefined ? vec(el.to, at(i, 'to')) : [from[0] + num(el.components![0], at(i, 'components[0]')), from[1] + num(el.components![1], at(i, 'components[1]'))];
+        if (from[0] === to[0] && from[1] === to[1]) err(at(i), 'the vector has zero length');
+        items.push({ type: 'segment', index: i, el, from, to, anim: animOf(el, i, null) });
+        break;
+      }
       case 'line': {
         let p: Vec, q: Vec;
         if (el.through) {
@@ -475,6 +520,28 @@ export function compileFigure(figure: Plot2dFigure): CompileResult {
         const p = vec(el.at, at(i, 'at'));
         if (!inView(p)) err(at(i, 'at'), `label position ${fmt(p)} is outside the view`);
         items.push({ type: 'mathLabel', index: i, el, at: p, anim: animOf(el, i, null) });
+        break;
+      }
+      case 'contour': {
+        const node = nodes.get(at(i, 'f'));
+        if (!node) break;
+        const f = (el.id ? table2(el.id, '') : undefined) ?? (compile(node, table, pointTable, { vars: ['x', 'y'], functions2: table2 }) as Fxy);
+        const mesh = el.mesh ?? 64;
+        const grid = sampleGrid(f, view.x, view.y, mesh);
+        const finite = grid.v.flat().filter(Number.isFinite);
+        if (!finite.length) {
+          err(at(i, 'f'), `"${el.f}" is not defined anywhere in the view`);
+          break;
+        }
+        const lo = Math.min(...finite);
+        const hi = Math.max(...finite);
+        let levels: number[];
+        if (Array.isArray(el.levels)) {
+          levels = el.levels;
+          const bad = levels.filter((c) => c < lo || c > hi);
+          if (bad.length) err(at(i, 'levels'), `level ${bad.join(', ')} doesn't occur in the view (f goes from ${+lo.toPrecision(4)} to ${+hi.toPrecision(4)})`);
+        } else levels = autoLevels(grid.v, el.levels ?? 6);
+        items.push({ type: 'contour', index: i, el, fn: f, levels, mesh, anim: animOf(el, i, null) });
         break;
       }
     }

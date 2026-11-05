@@ -30,6 +30,7 @@ Entry points:
 | `bye-math-engine/expr` | expression parser / compiler | no |
 | `bye-math-engine/core` | `validateFigure`, `figureToScene`, `timeline`/`frameAt`, sampling, solvers, `solveInequality`, `analyzeSign`, statistics, theme | no |
 | `bye-math-engine/native` | `<ByeFigure>`, `SceneSvg`, `MathLabel`, `rafDriver`, `useReducedMotion` | yes |
+| `bye-math-engine/native3d` | `<ByeFigure3D>` for `plot3d` (three.js on expo-gl); importing it once lets `<ByeFigure>` draw 3D too | yes |
 
 ## Figure description (spec 0)
 
@@ -90,6 +91,21 @@ Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`,
 | `dot` | `data`, `step`? |
 | `scatter` | `points`: [[x, y], …], `fit`: `linear` (least squares, equation and r shown) |
 
+**3D** — `{ "kind": "plot3d", "view": { "x", "y", "z" }, "camera"?: { "azimuth", "elevation", "zoom" }, "rotate"?: true, "equalAxes"?: false, "axes"?: { "labels", "box" } }`. Needs the optional peer dependencies `three` and `expo-gl` (both in Expo Go): `npx expo install expo-gl && npm install three`, then `import 'bye-math-engine/native3d'` once. Drag to rotate (a drag that starts on a rotatable figure rotates it instead of scrolling the page).
+
+| type | fields |
+|---|---|
+| `surface` | `z` in x and y, `region`? (e.g. `"x^2 + y^2 <= 4"`), `mesh`?, `opacity`? — its id can be called `f(1, 2)`, with partials `f_x`, `f_y`, `f_xy`… |
+| `paramSurface` | `x`, `y`, `z` in u and v, `u`, `v` ranges |
+| `plane` | `equation` (`"x + y + z = 1"`) or `point` + `normal`; cut to the box |
+| `tangentPlane` | `to` (surface id), `at`: [x0, y0], `size`? |
+| `curve` | `x`, `y`, `z` in t, `t` range |
+| `point` | `at`: [x, y, z], or `on` (surface id) + `over`: [x, y] |
+| `vector` / `segment` | `from`, `to` or `components` (vector) |
+| `contour` | `f` (expression in x, y, or a surface id), `levels` — drawn on the floor |
+
+plot2d also has `contour` (level curves by marching squares; give it an id to use `g_x(a, b)` for gradients) and `vector` (an arrow).
+
 ### Expressions
 
 - Operators `+ - * / ^`, parentheses; Unicode `− × ÷ · π` also accepted.
@@ -97,7 +113,8 @@ Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`,
 - Implicit multiplication: `2x`, `3sin(x)`, `2(x+1)`, `(x+1)(x-1)`, `x sin(x)`, `2pi x`. It has the same precedence as `*`, so `1/2x` is `(1/2)·x`.
 - `name(...)` is a call when `name` is a built-in or a function element id (`f(1)`); otherwise it's a product (`x(x+1)`).
 - Derivatives of function elements: `f'(x)`, `f''(2)`. Computed symbolically (chain rule through other functions); numeric only where there is no symbolic rule (`min`, `max`).
-- Point coordinates: `P.x`, `P.y` for a `point` or `intersection` with id `P`.
+- Point coordinates: `P.x`, `P.y` (and `P.z` in 3D) for a `point` or `intersection` with id `P`.
+- Two-variable functions (3D surfaces, 2D contours with an id): `f(a, b)`, partials `f_x(a, b)`, `f_yy`, `f_xy`… — exact, with the chain rule.
 - Functions: `sin cos tan sec csc cot asin acos atan (arcsin…) sinh cosh tanh sqrt cbrt abs exp ln log floor ceil round sign min max`; `log(x)` is base 10, `log(b, x)` base b. Constants `pi`, `e`.
 - Unknown names are errors with a hint (`xy` → "Did you mean x*y?", `sinx` → "sin(x)").
 - No `eval`: a Peggy grammar ([src/expr/grammar.peggy](src/expr/grammar.peggy)) builds an AST that is compiled to closures.

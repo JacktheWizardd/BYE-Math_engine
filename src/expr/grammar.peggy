@@ -68,9 +68,9 @@ Apply
 Primes
   = p:("'" / "′")* { return p.length; }
 
-// A coordinate of a point element: P.x, P.y
+// A coordinate of a point element: P.x, P.y, P.z
 Member
-  = n:Name "." axis:$("x" / "y") ![a-zA-Z0-9_] {
+  = n:Name "." axis:$("x" / "y" / "z") ![a-zA-Z0-9_] {
       const loc = location();
       return { type: 'member', id: n, axis, start: loc.start.offset, end: loc.end.offset };
     }

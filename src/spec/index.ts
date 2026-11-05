@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHART_TYPES, ChartFigure, ELEMENT_TYPES, Figure, FIGURE_KINDS, NUMBER_LINE_ELEMENT_TYPES, NumberLineFigure, Plot2dFigure, SignChartFigure } from './schema.ts';
+import { CHART_TYPES, ChartFigure, ELEMENT_TYPES, Figure, FIGURE_KINDS, NUMBER_LINE_ELEMENT_TYPES, NumberLineFigure, Plot2dFigure, Plot3dFigure, PLOT3D_ELEMENT_TYPES, SignChartFigure } from './schema.ts';
 
 export * from './schema.ts';
 
@@ -36,7 +36,7 @@ export function validateSpec(input: unknown): ValidationResult<Figure> {
     } else if (o.kind === 'chart' && (typeof o.type !== 'string' || !(CHART_TYPES as readonly string[]).includes(o.type))) {
       errors.push({ path: 'type', message: `Unknown chart type ${JSON.stringify(o.type)}. Supported: ${CHART_TYPES.join(', ')}` });
     }
-    const types: Record<string, readonly string[]> = { plot2d: ELEMENT_TYPES, numberLine: NUMBER_LINE_ELEMENT_TYPES };
+    const types: Record<string, readonly string[]> = { plot2d: ELEMENT_TYPES, plot3d: PLOT3D_ELEMENT_TYPES, numberLine: NUMBER_LINE_ELEMENT_TYPES };
     const allowed = typeof o.kind === 'string' ? types[o.kind] : undefined;
     if (allowed && Array.isArray(o.elements)) {
       o.elements.forEach((el, i) => {
@@ -51,7 +51,8 @@ export function validateSpec(input: unknown): ValidationResult<Figure> {
 
   // Validate against the schema for this kind, so errors are specific (not "no union member matched").
   const kind = (input as { kind?: string }).kind;
-  const schema = kind === 'numberLine' ? NumberLineFigure : kind === 'signChart' ? SignChartFigure : kind === 'chart' ? ChartFigure : Plot2dFigure;
+  const schema =
+    kind === 'numberLine' ? NumberLineFigure : kind === 'signChart' ? SignChartFigure : kind === 'chart' ? ChartFigure : kind === 'plot3d' ? Plot3dFigure : Plot2dFigure;
   const parsed = schema.safeParse(input);
   if (parsed.success) return { ok: true, figure: parsed.data as Figure };
   return {

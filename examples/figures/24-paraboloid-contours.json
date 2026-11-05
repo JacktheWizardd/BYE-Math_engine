@@ -1,0 +1,41 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": {
+    "x": [
+      -2,
+      2
+    ],
+    "y": [
+      -2,
+      2
+    ],
+    "z": [
+      0,
+      4
+    ]
+  },
+  "elements": [
+    {
+      "id": "f",
+      "type": "surface",
+      "z": "x^2 + y^2",
+      "region": "x^2 + y^2 <= 4",
+      "mesh": 40,
+      "label": {
+        "tex": "z = x^2 + y^2"
+      }
+    },
+    {
+      "type": "contour",
+      "f": "f",
+      "levels": [
+        0.5,
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "describe": "Paraboloid z = x² + y² over the disk x² + y² ≤ 4, with its level curves (circles) drawn on the floor."
+}

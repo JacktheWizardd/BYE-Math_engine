@@ -57,78 +57,96 @@ export function neg(a: Node): Node {
 }
 
 /** True if the value of the node changes with x. */
-export function dependsOnX(n: Node): boolean {
+/**
+ * True if the value changes with the variable `wrt`. Without `wrt`, any free
+ * variable counts (single-variable expressions: x, or a sign chart's variable).
+ */
+export function dependsOn(n: Node, wrt?: string): boolean {
   switch (n.type) {
     case 'num':
     case 'member':
       return false;
     case 'var':
-      // An expression has at most one free variable (x, or the sign chart's / number line's variable).
-      return true;
+      return wrt === undefined || n.name === wrt;
     case 'neg':
-      return dependsOnX(n.arg);
+      return dependsOn(n.arg, wrt);
     case 'bin':
-      return dependsOnX(n.left) || dependsOnX(n.right);
+      return dependsOn(n.left, wrt) || dependsOn(n.right, wrt);
     case 'call':
-      return n.args.some(dependsOnX);
+      return n.args.some((a) => dependsOn(a, wrt));
   }
 }
 
+/** True if a single-variable expression depends on its variable. */
+export const dependsOnX = (n: Node): boolean => dependsOn(n);
+
 /**
- * d/dx of a resolved expression, as a new (simplified) expression.
- * Calls to function elements use the chain rule with a higher derivative order:
- * d/dx f(u) = f'(u) · u'. Throws NoSymbolicDerivative for min/max.
+ * Derivative of a resolved expression, as a new (simplified) expression.
+ * `wrt` names the variable (partial derivative; other variables held constant);
+ * without it, the expression's single variable.
+ * Function elements use the chain rule: d/dx f(u) = f'(u)·u', and for a
+ * two-variable f: d/dw f(u, v) = f_x(u, v)·u' + f_y(u, v)·v'.
+ * Throws NoSymbolicDerivative for min/max.
  */
-export function derive(n: Node): Node {
-  if (!dependsOnX(n)) return num(0);
+export function derive(n: Node, wrt?: string): Node {
+  const d = (m: Node) => derive(m, wrt);
+  const dep = (m: Node) => dependsOn(m, wrt);
+  if (!dep(n)) return num(0);
   switch (n.type) {
     case 'num':
     case 'member':
       return num(0);
     case 'var':
-      return num(1);
+      return num(wrt === undefined || n.name === wrt ? 1 : 0);
     case 'neg':
-      return neg(derive(n.arg));
+      return neg(d(n.arg));
     case 'bin': {
       const { left: u, right: v } = n;
       switch (n.op) {
         case '+':
-          return add(derive(u), derive(v));
+          return add(d(u), d(v));
         case '-':
-          return sub(derive(u), derive(v));
+          return sub(d(u), d(v));
         case '*':
-          return add(mul(derive(u), v), mul(u, derive(v)));
+          return add(mul(d(u), v), mul(u, d(v)));
         case '/':
-          if (!dependsOnX(v)) return div(derive(u), v);
-          return div(sub(mul(derive(u), v), mul(u, derive(v))), pow(v, num(2)));
+          if (!dep(v)) return div(d(u), v);
+          return div(sub(mul(d(u), v), mul(u, d(v))), pow(v, num(2)));
         case '^': {
-          if (!dependsOnX(v)) {
+          if (!dep(v)) {
             // u^c → c·u^(c−1)·u'
-            return mul(mul(v, pow(u, sub(v, num(1)))), derive(u));
+            return mul(mul(v, pow(u, sub(v, num(1)))), d(u));
           }
-          if (!dependsOnX(u)) {
+          if (!dep(u)) {
             // c^v → c^v·ln(c)·v'
-            return mul(mul(n, call('ln', u)), derive(v));
+            return mul(mul(n, call('ln', u)), d(v));
           }
           // u^v → u^v·(v'·ln u + v·u'/u)
-          return mul(n, add(mul(derive(v), call('ln', u)), div(mul(v, derive(u)), u)));
+          return mul(n, add(mul(d(v), call('ln', u)), div(mul(v, d(u)), u)));
         }
       }
     }
     // eslint-disable-next-line no-fallthrough
     case 'call': {
       if (!n.builtin) {
+        if (n.args.length === 2) {
+          const [u, v] = n.args as [Node, Node];
+          const p = n.partial ?? '';
+          const fx: Node = { type: 'call', fn: n.fn, builtin: false, order: 0, partial: `${p}x`, args: [u, v] };
+          const fy: Node = { type: 'call', fn: n.fn, builtin: false, order: 0, partial: `${p}y`, args: [u, v] };
+          return add(mul(fx, d(u)), mul(fy, d(v)));
+        }
         const u = n.args[0]!;
-        return mul({ type: 'call', fn: n.fn, builtin: false, order: n.order + 1, args: [u] }, derive(u));
+        return mul({ type: 'call', fn: n.fn, builtin: false, order: n.order + 1, args: [u] }, d(u));
       }
-      return deriveBuiltin(n.fn, n.args);
+      return deriveBuiltin(n.fn, n.args, wrt);
     }
   }
 }
 
-function deriveBuiltin(fn: string, args: Node[]): Node {
+function deriveBuiltin(fn: string, args: Node[], wrt?: string): Node {
   const u = args[0]!;
-  const du = derive(u);
+  const du = derive(u, wrt);
   const chain = (outer: Node) => mul(outer, du);
   const one = num(1);
   switch (fn) {
@@ -171,7 +189,7 @@ function deriveBuiltin(fn: string, args: Node[]): Node {
       if (args.length === 1) return chain(div(one, mul(u, num(Math.LN10))));
       // log(b, x) = ln(x) / ln(b)
       const [b, x] = args as [Node, Node];
-      return derive(div(call('ln', x), call('ln', b)));
+      return derive(div(call('ln', x), call('ln', b)), wrt);
     }
     case 'abs':
       return chain(call('sign', u));

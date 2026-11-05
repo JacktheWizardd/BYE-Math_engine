@@ -175,7 +175,7 @@ function peg$parse(input, options) {
   const peg$e1 = peg$literalExpectation(")", false);
   const peg$e2 = peg$classExpectation(["'", "\u2032"], false, false, false);
   const peg$e3 = peg$literalExpectation(".", false);
-  const peg$e4 = peg$classExpectation([["x", "y"]], false, false, false);
+  const peg$e4 = peg$classExpectation([["x", "z"]], false, false, false);
   const peg$e5 = peg$classExpectation([["a", "z"], ["A", "Z"], ["0", "9"], "_"], false, false, false);
   const peg$e6 = peg$literalExpectation(",", false);
   const peg$e7 = peg$otherExpectation("number");
@@ -756,7 +756,7 @@ function peg$parse(input, options) {
       }
       if (s2 !== peg$FAILED) {
         s3 = input.charAt(peg$currPos);
-        if ((peg$charCode = s3.charCodeAt(0), (peg$charCode >= 120 && peg$charCode <= 121))) {
+        if ((peg$charCode = s3.charCodeAt(0), (peg$charCode >= 120 && peg$charCode <= 122))) {
           peg$currPos++;
         } else {
           s3 = peg$FAILED;

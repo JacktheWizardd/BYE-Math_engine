@@ -9,6 +9,8 @@ export interface Scope {
   functions: readonly string[];
   /** Ids of point elements whose coordinates may be used, e.g. P in "P.x". */
   points?: readonly string[];
+  /** Ids of two-variable functions (surfaces), called f(a, b), with partials f_x, f_y, f_xy… */
+  functions2?: readonly string[];
   /** Ids of other elements, only for clearer error messages ("s is a segment, not a point"). */
   others?: ReadonlyMap<string, string>;
 }
@@ -23,7 +25,13 @@ export function resolve(raw: RawNode, scope: Scope, source: string): Node {
     throw new ExprError(msg, source, n.start, n.end);
   };
 
-  const isCallable = (name: string) => Object.hasOwn(BUILTIN_FUNCTIONS, name) || scope.functions.includes(name);
+  const isCallable = (name: string) =>
+    Object.hasOwn(BUILTIN_FUNCTIONS, name) || scope.functions.includes(name) || !!scope.functions2?.includes(name) || partialOf(name) !== null;
+  /** "f_xy" → { id: "f", partial: "xy" } when f is a two-variable function. */
+  const partialOf = (name: string): { id: string; partial: string } | null => {
+    const m = /^([A-Za-z][A-Za-z0-9]*)_([xy]+)$/.exec(name);
+    return m && scope.functions2?.includes(m[1]!) ? { id: m[1]!, partial: m[2]! } : null;
+  };
 
   const value = (name: string, n: RawNode): Node => {
     if (scope.variables.includes(name)) return { type: 'var', name };
@@ -63,6 +71,12 @@ export function resolve(raw: RawNode, scope: Scope, source: string): Node {
             fail(`${n.callee} takes ${builtin.arity.join(' or ')} argument(s), got ${n.args.length}`, n);
           }
           return { type: 'call', fn: n.callee, builtin: true, order: 0, args: n.args.map(walk) };
+        }
+        const two = scope.functions2?.includes(n.callee) ? { id: n.callee, partial: '' } : partialOf(n.callee);
+        if (two) {
+          if (n.order > 0) fail(`"${two.id}" has two variables; write partial derivatives as ${two.id}_x(…) or ${two.id}_y(…)`, n);
+          if (n.args.length !== 2) fail(`${n.callee} takes 2 arguments (x, y), got ${n.args.length}`, n);
+          return { type: 'call', fn: two.id, builtin: false, order: 0, partial: two.partial, args: n.args.map(walk) };
         }
         if (scope.functions.includes(n.callee)) {
           if (n.args.length !== 1) fail(`${n.callee} takes 1 argument, got ${n.args.length}`, n);

@@ -98,7 +98,34 @@ export const IntersectionEl = z.strictObject({
   role: Role.default('bound'),
 });
 
-export const ELEMENT_TYPES = ['function', 'region', 'point', 'segment', 'line', 'text', 'mathLabel', 'tangent', 'intersection'] as const;
+/** Level curves f(x, y) = c (a contour map). */
+export const ContourEl = z.strictObject({
+  ...base,
+  type: z.literal('contour'),
+  /** Expression in x and y. */
+  f: z.string().min(1),
+  /** The levels c to draw, or how many round levels to pick (default 6). */
+  levels: z.union([z.array(z.number().refine(Number.isFinite, 'must be a finite number')).min(1), z.number().int().min(1).max(30)]).optional(),
+  /** Write each level's value on its curve. */
+  labels: z.boolean().optional(),
+  /** Grid cells per side for marching squares (default 64). */
+  mesh: z.number().int().min(8).max(200).optional(),
+  role: Role.default('F'),
+});
+
+/** An arrow from a point, to a point or by components (e.g. a gradient). */
+export const VectorEl = z
+  .strictObject({
+    ...base,
+    type: z.literal('vector'),
+    from: PointRef,
+    to: PointRef.optional(),
+    components: z.tuple([Coord, Coord]).optional(),
+    role: Role.default('bound'),
+  })
+  .refine((v) => (v.to === undefined) !== (v.components === undefined), 'vector needs exactly one of "to" or "components"');
+
+export const ELEMENT_TYPES = ['function', 'region', 'point', 'segment', 'line', 'text', 'mathLabel', 'tangent', 'intersection', 'contour', 'vector'] as const;
 
 export const Element = z.discriminatedUnion('type', [
   FunctionEl,
@@ -110,6 +137,8 @@ export const Element = z.discriminatedUnion('type', [
   MathLabelEl,
   TangentEl,
   IntersectionEl,
+  ContourEl,
+  VectorEl,
 ]);
 
 export const Plot2dFigure = z.strictObject({
@@ -138,6 +167,8 @@ export type TextEl = z.infer<typeof TextEl>;
 export type MathLabelEl = z.infer<typeof MathLabelEl>;
 export type TangentEl = z.infer<typeof TangentEl>;
 export type IntersectionEl = z.infer<typeof IntersectionEl>;
+export type ContourEl = z.infer<typeof ContourEl>;
+export type VectorEl = z.infer<typeof VectorEl>;
 export type Element = z.infer<typeof Element>;
 export type ElementType = Element['type'];
 export type Plot2dFigure = z.infer<typeof Plot2dFigure>;

@@ -1,0 +1,29 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": {
+    "x": [
+      -3,
+      3
+    ],
+    "y": [
+      -3,
+      3
+    ],
+    "z": [
+      -1.5,
+      1.5
+    ]
+  },
+  "elements": [
+    {
+      "type": "surface",
+      "z": "sin(x) cos(y)",
+      "mesh": 40,
+      "animate": {
+        "duration": 1200
+      }
+    }
+  ],
+  "describe": "Surface z = sin x cos y over −3 ≤ x, y ≤ 3, rising from the plane z = 0."
+}

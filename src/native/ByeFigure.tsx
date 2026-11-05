@@ -1,10 +1,10 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useState, type ComponentType } from 'react';
 import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { ByeLightTheme, DEFAULT_ASPECT, figureToScene, frameAt, timeline, type ByeTheme, type Measure } from '../core/index.ts';
 import type { FigureIssue } from '../spec/index.ts';
 import { FigureError } from './FigureError.tsx';
 import { mathJaxBackend, type MathLabelBackend } from './MathLabel.tsx';
-import { rafDriver, useReducedMotion, type AnimationDriver } from './animation.ts';
+import { rafDriver, useFigureClock, type AnimationDriver } from './animation.ts';
 import { SceneSvg } from './renderScene.tsx';
 
 export interface ByeFigureProps {
@@ -37,8 +37,22 @@ const describeOf = (figure: unknown): string | undefined => {
   return typeof d === 'string' && d.trim() ? d : undefined;
 };
 
-/** Draws a BYE Math figure natively with react-native-svg. */
-export function ByeFigure({
+/** Renderers for figure kinds drawn outside react-native-svg (plot3d → bye-math-engine/native3d). */
+const kindRenderers = new Map<string, ComponentType<ByeFigureProps>>();
+
+/** Registers a component that draws figures of `kind` (used by bye-math-engine/native3d). */
+export function registerFigureRenderer(kind: string, component: ComponentType<ByeFigureProps>) {
+  kindRenderers.set(kind, component);
+}
+
+/** Draws a BYE Math figure natively: 2D kinds with react-native-svg, others with a registered renderer. */
+export function ByeFigure(props: ByeFigureProps) {
+  const kind = (props.figure as { kind?: unknown } | null)?.kind;
+  const Custom = typeof kind === 'string' ? kindRenderers.get(kind) : undefined;
+  return Custom ? <Custom {...props} /> : <ByeFigure2D {...props} />;
+}
+
+function ByeFigure2D({
   figure,
   width: fixedWidth,
   theme = ByeLightTheme,
@@ -69,29 +83,11 @@ export function ByeFigure({
   void reported;
 
   // --- animation: a clock in ms; frames are computed from the scene (pure, see core/animate.ts)
-  const systemReduce = useReducedMotion();
-  const reduce = reduceMotion ?? systemReduce;
   const scene = result?.ok ? result.scene : null;
   const total = scene ? timeline(scene) : 0;
-  const wantsMotion = animate && total > 0;
-  const playing = wantsMotion && reduce === false;
-  const [clock, setClock] = useState<{ ms: number; done: boolean }>({ ms: 0, done: false });
-  const endRef = useRef(onAnimationEnd);
-  endRef.current = onAnimationEnd;
-  // Layout effect: the reset to frame 0 lands before paint, so a replay never flashes the final state.
-  useLayoutEffect(() => {
-    if (!playing) return;
-    setClock({ ms: 0, done: false });
-    return animationDriver.start(
-      total,
-      (ms) => setClock({ ms, done: false }),
-      () => {
-        setClock({ ms: total, done: true });
-        endRef.current?.();
-      },
-    );
-    // Replays when the figure, its timeline or replayKey changes; not on resize.
-  }, [playing, figure, total, replayKey, animationDriver]);
+  // Replays when the figure or replayKey changes; not on resize.
+  const clock = useFigureClock({ total, animate, reduceMotion, driver: animationDriver, restartKeys: [figure, replayKey], onEnd: onAnimationEnd });
+  const { wantsMotion, reduce, playing } = clock;
 
   const onLayout = fixedWidth ? undefined : (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);

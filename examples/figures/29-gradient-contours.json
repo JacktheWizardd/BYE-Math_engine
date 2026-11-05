@@ -1,0 +1,85 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": {
+    "x": [
+      -3,
+      3
+    ],
+    "y": [
+      -2,
+      2
+    ]
+  },
+  "axes": {
+    "x": true,
+    "y": true,
+    "labels": false
+  },
+  "aspect": 1.5,
+  "elements": [
+    {
+      "id": "g",
+      "type": "contour",
+      "f": "x^2 + 2y^2",
+      "levels": [
+        1,
+        2,
+        4,
+        6,
+        9
+      ],
+      "labels": true,
+      "role": "F"
+    },
+    {
+      "id": "P",
+      "type": "point",
+      "at": [
+        1,
+        1
+      ],
+      "role": "bound",
+      "label": {
+        "text": "P",
+        "at": "left"
+      }
+    },
+    {
+      "type": "vector",
+      "from": "P",
+      "components": [
+        "g_x(P.x, P.y)/4",
+        "g_y(P.x, P.y)/4"
+      ],
+      "role": "bound",
+      "label": {
+        "tex": "\\nabla g",
+        "at": "end"
+      }
+    },
+    {
+      "id": "Q",
+      "type": "point",
+      "at": [
+        -2,
+        0.5
+      ],
+      "role": "f",
+      "label": {
+        "text": "Q",
+        "at": "below"
+      }
+    },
+    {
+      "type": "vector",
+      "from": "Q",
+      "components": [
+        "g_x(Q.x, Q.y)/4",
+        "g_y(Q.x, Q.y)/4"
+      ],
+      "role": "f"
+    }
+  ],
+  "describe": "Contour map of g(x, y) = x² + 2y² (ellipses at levels 1, 2, 4, 6, 9) with gradient vectors at P = (1, 1) and Q = (−2, 0.5), each perpendicular to its level curve and pointing uphill."
+}

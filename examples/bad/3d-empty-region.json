@@ -1,0 +1,25 @@
+{
+  "kind": "plot3d",
+  "view": {
+    "x": [
+      -1,
+      1
+    ],
+    "y": [
+      -1,
+      1
+    ],
+    "z": [
+      -1,
+      1
+    ]
+  },
+  "elements": [
+    {
+      "type": "surface",
+      "z": "x y",
+      "region": "x^2 + y^2 < 0"
+    }
+  ],
+  "describe": "Surface over an empty region."
+}

@@ -126,7 +126,7 @@ describe('charts', () => {
 });
 
 describe('every Stage 3 figure', () => {
-  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => f >= '13');
+  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => f >= '13' && f < '23');
   it.each(files)('%s: builds, labels inside, last frame = static', (file) => {
     const s = sceneOf(load(`figures/${file}`));
     for (const p of s.primitives) {

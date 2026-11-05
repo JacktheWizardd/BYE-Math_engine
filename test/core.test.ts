@@ -173,7 +173,8 @@ describe('§9 bad input: clear errors, never a crash', () => {
 });
 
 describe('gallery figures', () => {
-  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => f.endsWith('.json'));
+  // 2D kinds only; plot3d figures are covered in plot3d.test.ts
+  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => f.endsWith('.json') && load(`figures/${f}`).kind !== 'plot3d');
   it.each(files)('%s builds', (file) => {
     const fig = load(`figures/${file}`);
     const s = sceneOf(fig);

@@ -21,6 +21,8 @@ import {
   type SceneResult,
 } from './layout.ts';
 import type { FigureModel, FnInfo, Item, ItemAnim } from './model.ts';
+import { contourLines } from './contour.ts';
+import { arrowHead } from './kinds/common.ts';
 import { sampleFunction, slice, type Polyline } from './sample.ts';
 import { ByeLightTheme, type AnyRole, type ByeTheme } from './theme.ts';
 import { DEFAULT_ASPECT, plotRect, toPx, type Padding, type Rect, type Vec, type Viewport } from './view.ts';
@@ -226,7 +228,15 @@ function layout(
       case 'segment': {
         const a = px(item.from);
         const b = px(item.to);
-        prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: b, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
+        const isVector = item.el.type === 'vector';
+        // a vector's shaft stops at the base of its head
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const shaftEnd: Pt = isVector ? [b[0] - ((b[0] - a[0]) / len) * 6, b[1] - ((b[1] - a[1]) / len) * 6] : b;
+        prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: shaftEnd, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
+        if (isVector) {
+          const head = arrowHead(b[0], b[1], b[0] - a[0], b[1] - a[1], 10);
+          prims.push({ kind: 'polygon', key: `${key}-head`, role: item.el.role, clip: true, points: head, fillOpacity: 1, ...(item.anim ? { anim: { kind: 'fade', delay: item.anim.delay + item.anim.duration * 0.8, duration: item.anim.duration * 0.2 } } : {}) });
+        }
         obstacles.strokes.push([a, b]);
         setLabelAnim(item);
         if (item.el.label) segmentLabel(item.index, item.el.label, item.el.role, a, b);
@@ -280,6 +290,39 @@ function layout(
           req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height) },
           make: (box) => textPrim(key, item.el.role, item.el.text, font, size, box),
         });
+        return;
+      }
+      case 'contour': {
+        const levels = contourLines(item.fn, figure.view.x, figure.view.y, item.levels, item.mesh);
+        const size = fs(theme.fontSize.tick);
+        levels.forEach(({ level, lines }, k) => {
+          let longest: Pt[] = [];
+          lines.forEach((line, q) => {
+            const points = line.map((p) => px(p));
+            prims.push({ kind: 'polyline', key: `${key}-${k}-${q}`, role: item.el.role, clip: true, points, width: 1.5, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
+            obstacles.strokes.push(points);
+            if (points.length > longest.length) longest = points;
+          });
+          if (item.el.labels && longest.length) {
+            const mid = longest[Math.floor(longest.length / 2)]!;
+            const text = formatNumber(level);
+            const m = measure.text(text, size, 'math');
+            const lkey = `label-${item.index}-${k}`;
+            if (item.anim) labelAnims.set(lkey, { kind: 'fade', delay: item.anim.delay + item.anim.duration, duration: LABEL_FADE_MS });
+            labels.push({
+              req: { key: lkey, width: m.width, height: m.height, explicit: false, candidates: nudges(mid, m.width, m.height) },
+              make: (box) => textPrim(lkey, item.el.role, text, 'math', size, box),
+            });
+          }
+        });
+        setLabelAnim(item);
+        if (item.el.label) {
+          const first = levels.find((l) => l.lines.length)?.lines[0];
+          if (first) {
+            const anchorPt = px(first[Math.floor(first.length / 4)]!);
+            pointLabel(item.index, item.el.label, item.el.role, anchorPt);
+          }
+        }
         return;
       }
       case 'mathLabel': {

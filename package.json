@@ -30,6 +30,11 @@
       "types": "./src/native/index.ts",
       "react-native": "./src/native/index.ts",
       "default": "./lib/native/index.js"
+    },
+    "./native3d": {
+      "types": "./src/native3d/index.ts",
+      "react-native": "./src/native3d/index.ts",
+      "default": "./lib/native3d/index.js"
     }
   },
   "scripts": {
@@ -46,18 +51,31 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-svg": ">=15"
+    "react-native-svg": ">=15",
+    "three": ">=0.163",
+    "expo-gl": "*"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
+    "@types/three": "^0.187.0",
     "eslint": "^10.14.0",
+    "expo-gl": "^58.0.4",
     "peggy": "^5.1.1",
     "react": "^19.3.1",
     "react-native": "^0.88.1",
     "react-native-svg": "^15.16.0",
+    "three": "^0.187.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
     "vitest": "^5.1.0"
+  },
+  "peerDependenciesMeta": {
+    "three": {
+      "optional": true
+    },
+    "expo-gl": {
+      "optional": true
+    }
   }
 }

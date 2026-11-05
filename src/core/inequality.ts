@@ -1,4 +1,4 @@
-import { ExprError, parseExpr, dependsOnX, type FunctionTable, type Node } from '../expr/index.ts';
+import { compile, ExprError, parseExpr, dependsOn, type CompileOptions, type FunctionTable, type Node, type Scope } from '../expr/index.ts';
 import { analyzeSign, SignError } from './sign.ts';
 
 /** A piece of a solution set. `from === to` for an isolated point. Ends may be ±Infinity (never closed). */
@@ -101,14 +101,18 @@ function splitTop(src: string, start: number, end: number, seps: RegExp): [numbe
   return parts;
 }
 
+export interface Comparison {
+  /** L − R */
+  diff: Node;
+  op: Op;
+}
+
 /**
- * Solves an inequality written for a student: chains (`-1 < x <= 3`), `and`, `or`,
- * `!=`, `=`, and any expression on either side (`x^2 - 4 > 0`, `(x-1)/(x+2) >= 0`).
- * Each comparison L op R becomes the sign condition of L − R. Throws ExprError
- * (with the position in the original string) or SignError.
+ * Parses an inequality into OR-groups of AND-ed comparisons (`L op R`, as L − R).
+ * Chains (`a < x <= b`), `and`, `or`, `,`, `!=`, `=`, and ≤ ≥ ≠ are accepted.
+ * Throws ExprError with the position in the original string.
  */
-export function solveInequality(src: string, variable: string, range: readonly [number, number], functions: string[] = [], table?: FunctionTable): SolutionSet {
-  const scope = { variables: [variable], functions };
+export function parseComparisons(src: string, scope: Scope, what: string): Comparison[][] {
   const sub = (from: number, to: number): Node => {
     const text = src.slice(from, to);
     if (!text.trim()) throw new ExprError('Missing expression', src, from, Math.max(from + 1, to));
@@ -119,11 +123,9 @@ export function solveInequality(src: string, variable: string, range: readonly [
       throw e;
     }
   };
-
-  const orParts = splitTop(src, 0, src.length, /\s+or\s+|∪|\|\|/y);
-  let result: SolutionSet = [];
-  for (const [os, oe] of orParts) {
-    let conj: SolutionSet | null = null;
+  const groups: Comparison[][] = [];
+  for (const [os, oe] of splitTop(src, 0, src.length, /\s+or\s+|∪|\|\|/y)) {
+    const group: Comparison[] = [];
     for (const [as, ae] of splitTop(src, os, oe, /\s+and\s+|∧|&&|,/y)) {
       // chain: e0 op0 e1 op1 e2 …
       const sides: [number, number][] = [];
@@ -145,18 +147,56 @@ export function solveInequality(src: string, variable: string, range: readonly [
         }
       }
       sides.push([from, ae]);
-      if (ops.length === 0) throw new ExprError(`Expected a comparison like ${variable} < 3`, src, as, Math.max(as + 1, ae));
+      if (ops.length === 0) throw new ExprError(`Expected a comparison like ${what}`, src, as, Math.max(as + 1, ae));
       const nodes = sides.map(([s, e]) => sub(s, e));
-      if (!nodes.some(dependsOnX)) throw new ExprError(`This doesn't involve ${variable}`, src, as, ae);
-      for (let k = 0; k < ops.length; k++) {
-        const diff: Node = { type: 'bin', op: '-', left: nodes[k]!, right: nodes[k + 1]! };
-        const s = solveSign(diff, ops[k]!, range, table);
-        conj = conj === null ? s : intersect(conj, s);
-      }
+      if (!nodes.some((n) => dependsOn(n))) throw new ExprError(`This doesn't involve ${scope.variables.join(' or ')}`, src, as, ae);
+      for (let k = 0; k < ops.length; k++) group.push({ diff: { type: 'bin', op: '-', left: nodes[k]!, right: nodes[k + 1]! }, op: ops[k]! });
+    }
+    groups.push(group);
+  }
+  return groups;
+}
+
+/**
+ * Solves an inequality written for a student: chains (`-1 < x <= 3`), `and`, `or`,
+ * `!=`, `=`, and any expression on either side (`x^2 - 4 > 0`, `(x-1)/(x+2) >= 0`).
+ * Each comparison L op R becomes the sign condition of L − R. Throws ExprError
+ * (with the position in the original string) or SignError.
+ */
+export function solveInequality(src: string, variable: string, range: readonly [number, number], functions: string[] = [], table?: FunctionTable): SolutionSet {
+  let result: SolutionSet = [];
+  for (const group of parseComparisons(src, { variables: [variable], functions }, `${variable} < 3`)) {
+    let conj: SolutionSet | null = null;
+    for (const { diff, op } of group) {
+      const s = solveSign(diff, op, range, table);
+      conj = conj === null ? s : intersect(conj, s);
     }
     result = union(result, conj ?? []);
   }
   return result;
+}
+
+/**
+ * A membership test for a region in several variables, e.g. "x^2 + y^2 <= 4"
+ * in (x, y). Points where a side is undefined are outside.
+ */
+export function inequalityPredicate(src: string, vars: readonly string[], scope: Partial<Scope> = {}, opts: CompileOptions = {}, table?: FunctionTable): (a: number, b?: number, c?: number) => boolean {
+  const groups = parseComparisons(src, { functions: [], ...scope, variables: [...vars] }, `${vars.join('^2 + ')}^2 <= 4`).map((g) =>
+    g.map(({ diff, op }) => ({ f: compile(diff, table, undefined, { ...opts, vars }), op })),
+  );
+  const holds = (v: number, op: Op) => {
+    if (!Number.isFinite(v)) return false;
+    const eps = 1e-9;
+    switch (op) {
+      case '<': return v < 0;
+      case '<=': return v <= eps;
+      case '>': return v > 0;
+      case '>=': return v >= -eps;
+      case '=': return Math.abs(v) <= eps;
+      case '!=': return Math.abs(v) > eps;
+    }
+  };
+  return (a, b, c) => groups.some((g) => g.every(({ f, op }) => holds(f(a, b, c), op)));
 }
 
 export { SignError };

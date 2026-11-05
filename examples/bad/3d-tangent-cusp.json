@@ -1,0 +1,33 @@
+{
+  "kind": "plot3d",
+  "view": {
+    "x": [
+      -1,
+      1
+    ],
+    "y": [
+      -1,
+      1
+    ],
+    "z": [
+      0,
+      2
+    ]
+  },
+  "elements": [
+    {
+      "id": "f",
+      "type": "surface",
+      "z": "sqrt(x^2 + y^2)"
+    },
+    {
+      "type": "tangentPlane",
+      "to": "f",
+      "at": [
+        0,
+        0
+      ]
+    }
+  ],
+  "describe": "Tangent plane at the tip of a cone."
+}

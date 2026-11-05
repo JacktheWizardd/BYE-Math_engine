@@ -1,0 +1,65 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": {
+    "x": [
+      -0.5,
+      1.5
+    ],
+    "y": [
+      -0.5,
+      1.5
+    ],
+    "z": [
+      -0.5,
+      1.5
+    ]
+  },
+  "camera": {
+    "azimuth": 25,
+    "elevation": 24
+  },
+  "elements": [
+    {
+      "type": "plane",
+      "equation": "x + y + z = 1",
+      "label": {
+        "tex": "x + y + z = 1"
+      }
+    },
+    {
+      "type": "point",
+      "at": [
+        1,
+        0,
+        0
+      ],
+      "label": {
+        "tex": "(1,0,0)"
+      }
+    },
+    {
+      "type": "point",
+      "at": [
+        0,
+        1,
+        0
+      ],
+      "label": {
+        "tex": "(0,1,0)"
+      }
+    },
+    {
+      "type": "point",
+      "at": [
+        0,
+        0,
+        1
+      ],
+      "label": {
+        "tex": "(0,0,1)"
+      }
+    }
+  ],
+  "describe": "The plane x + y + z = 1, cut to the box, passing through (1, 0, 0), (0, 1, 0) and (0, 0, 1)."
+}

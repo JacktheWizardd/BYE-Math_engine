@@ -13,6 +13,7 @@ The engine's own code is original. Mafs (MIT) and JSXGraph (MIT option of its LG
 | zod | 4.x | MIT | figure description validation |
 
 Peer dependencies supplied by the host app: react (MIT), react-native (MIT), react-native-svg (MIT).
+Optional, only for 3D (`bye-math-engine/native3d`): three (MIT), including its `Line2` / `LineMaterial` / `LineGeometry` add-ons, and expo-gl (MIT).
 
 ## Build-time tools (not shipped)
 
