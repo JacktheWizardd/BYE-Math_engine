@@ -53,8 +53,19 @@ export function ByeFigure3D({
   const camRef = useRef(cam);
   camRef.current = cam;
   const start = useRef(cam);
-  // Once the user drags, auto-rotation stops for good.
+  // Once the user drags, auto-rotation stops (until a replay).
   const [touched, setTouched] = useState(false);
+  // A replay starts over: the author's view, auto-rotation back on.
+  const firstReplay = useRef(true);
+  useEffect(() => {
+    if (firstReplay.current) {
+      firstReplay.current = false;
+      return;
+    }
+    setTouched(false);
+    if (scene) setCamera(scene.camera);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayKey]);
   const pan = useMemo(
     () =>
       PanResponder.create({

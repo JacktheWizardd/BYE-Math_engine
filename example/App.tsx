@@ -48,10 +48,16 @@ const showcase3d = [
 ].map((g) => ({ ...g, items: g.items.map((f) => ({ ...f, figure: withEntrance(f.figure) })) }));
 
 function ShowcaseCard({ title, figure, replayKey }: { title: string; figure: unknown; replayKey: number }) {
+  const [own, setOwn] = useState(0);
   return (
     <View style={[styles.cell, styles.card]}>
-      <Text style={styles.h2}>{title}</Text>
-      <ByeFigure figure={figure} replayKey={replayKey} autoRotate={8} />
+      <View style={styles.cardHead}>
+        <Text style={[styles.h2, styles.cardTitle]}>{title}</Text>
+        <Pressable onPress={() => setOwn((k) => k + 1)} style={styles.replaySmall} accessibilityRole="button" accessibilityLabel={`Replay ${title}`}>
+          <Text style={styles.replaySmallText}>↻ Replay</Text>
+        </Pressable>
+      </View>
+      <ByeFigure figure={figure} replayKey={`${replayKey}-${own}`} autoRotate={8} />
       <Text style={styles.describe}>{(figure as { describe: string }).describe}</Text>
     </View>
   );
@@ -65,7 +71,7 @@ function Showcase3D() {
       <Text style={styles.sub}>Drag any figure to rotate it. Every figure is drawn from a short JSON description.</Text>
       <View style={styles.controls}>
         <Pressable onPress={() => setReplayKey((k) => k + 1)} style={styles.button} accessibilityRole="button">
-          <Text style={styles.buttonText}>Replay animations</Text>
+          <Text style={styles.buttonText}>Replay all</Text>
         </Pressable>
       </View>
       {showcase3d.map(({ heading, items }) => (
@@ -170,6 +176,10 @@ const styles = StyleSheet.create({
   card: { marginTop: 20 },
   wide: { maxWidth: 1180 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -14 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+  cardTitle: { flex: 1, marginBottom: 0 },
+  replaySmall: { borderWidth: 1, borderColor: ai, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  replaySmallText: { fontFamily: 'ZenKakuGothicNew_400Regular', fontSize: 12, color: ai },
   cell: { width: 350, maxWidth: '100%', paddingHorizontal: 14 },
   h2: { fontFamily: 'ZenKakuGothicNew_400Regular', fontSize: 14, color: ink, marginBottom: 6 },
   describe: { fontFamily: 'ZenKakuGothicNew_400Regular', fontSize: 12, color: ink2, marginTop: 6, lineHeight: 17 },

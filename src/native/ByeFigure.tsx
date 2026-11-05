@@ -32,7 +32,7 @@ export interface ByeFigureProps {
   animationDriver?: AnimationDriver;
   /**
    * 3D only: slowly turn the figure (degrees per second; true = 10) after its
-   * animation, to show it can be rotated. Stops for good once the user drags it.
+   * animation, to show it can be rotated. Stops once the user drags it (a replay turns it back on).
    * Never under Reduce Motion, and not for figures with "rotate": false.
    */
   autoRotate?: boolean | number;
