@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type ComponentType } from 'react';
-import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { ByeLightTheme, DEFAULT_ASPECT, figureToScene, frameAt, timeline, type ByeTheme, type Measure } from '../core/index.ts';
 import type { FigureIssue } from '../spec/index.ts';
 import { FigureError } from './FigureError.tsx';
@@ -120,6 +120,33 @@ function ByeFigure2D({
   const s = result.scene;
   // Until Reduce Motion is known, hold the first frame so nothing flashes in its final state.
   const primitives = !wantsMotion || reduce === true || clock.done ? s.primitives : frameAt(s, playing ? clock.ms : 0);
+  if (s.scroll) {
+    // Wider than the screen (e.g. a sign chart with many columns): scroll sideways,
+    // with the heading column drawn again on top, pinned to the left.
+    const { viewportWidth, frozenWidth } = s.scroll;
+    return (
+      <View
+        style={containerStyle}
+        onLayout={onLayout}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={s.describe}
+        accessibilityHint="Scroll sideways to see every column"
+      >
+        <View style={{ width: viewportWidth, height: s.height }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator bounces={false} contentContainerStyle={{ width: s.width }}>
+            <SceneSvg scene={s} primitives={primitives} clipId={clipId} mathBackend={mathBackend} />
+          </ScrollView>
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', left: 0, top: 0, width: frozenWidth + 1, height: s.height, overflow: 'hidden', backgroundColor: theme.background }}
+          >
+            <SceneSvg scene={s} primitives={primitives} clipId={`${clipId}-frozen`} mathBackend={mathBackend} />
+          </View>
+        </View>
+      </View>
+    );
+  }
   return (
     <View
       style={containerStyle}

@@ -192,3 +192,26 @@ describe('region edges are cut exactly', () => {
     for (const [x, y] of P) expect(x * x + y * y).toBeLessThanOrEqual(4 + 1e-9);
   });
 });
+
+describe('fine meshes', () => {
+  it('a 200 × 200 surface builds quickly and stays exact at the region edge', () => {
+    const fig = load('figures/24-paraboloid-contours.json');
+    fig.elements[0].mesh = 200;
+    const t0 = performance.now();
+    const s = sceneOf(fig);
+    const ms = performance.now() - t0;
+    const m = s.meshes[0]!;
+    expect(m.indices.length / 3).toBeGreaterThan(50000);
+    expect(ms).toBeLessThan(3000);
+    for (const p of verts(m.positions)) {
+      const [x, y] = fromBox(s, p);
+      expect(x * x + y * y).toBeLessThanOrEqual(4 + 1e-9);
+    }
+  });
+  it('more than 200 is rejected', () => {
+    const fig = load('figures/23-saddle.json');
+    fig.elements[0].mesh = 201;
+    const r = figureToScene3d(fig, { width: 338 });
+    expect(r.ok).toBe(false);
+  });
+});

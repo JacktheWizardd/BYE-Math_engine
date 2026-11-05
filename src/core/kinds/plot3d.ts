@@ -9,7 +9,7 @@ import { ByeLightTheme, type AnyRole } from '../theme.ts';
 import { ticks } from '../layout.ts';
 
 type M3 = [number, number, number];
-const DEFAULT_MESH = 32;
+const DEFAULT_MESH = 48;
 const CURVE_SAMPLES = 360;
 
 const exprMessage = (e: unknown) => (e instanceof ExprError ? e.describe() : String((e as Error)?.message ?? e));

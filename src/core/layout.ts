@@ -91,6 +91,11 @@ export interface Scene {
   /** Sampled curves in math coordinates, by function id (for tests and later animation). */
   samples: Record<string, Polyline[]>;
   theme: ByeTheme;
+  /**
+   * Set when the scene is wider than the space it was laid out for: the renderer shows
+   * `viewportWidth` at a time, scrolls sideways, and keeps x ∈ [0, frozenWidth] fixed on the left.
+   */
+  scroll?: { viewportWidth: number; frozenWidth: number };
 }
 
 export interface SceneOptions {

@@ -79,7 +79,7 @@ Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`,
 | `point` | `at`, `open` |
 | `text` / `mathLabel` | `at`, `text` / `tex`, `side`: `above` \| `below` |
 
-**Sign chart** — `{ "kind": "signChart", "f": "(x-1)(x+2)/(x-3)", "factors"?: ["x-1", "x+2", "x-3"] }`, or `"rows"` for full control: `{ "expr": "f'(x)", "show": "sign" | "trend", "label"?: tex }` with `"functions": { "f": "x^3 - 3x" }`. Zeros, undefined points and signs are computed; trend rows draw ↗/↘ and mark max/min. `"marks": [{ "x": "sqrt(2)", "tex": "\\sqrt{2}" }]` controls how a point is written; `"range"` limits the search (default ±50, at most 8 critical points).
+**Sign chart** — `{ "kind": "signChart", "f": "(x-1)(x+2)/(x-3)", "factors"?: ["x-1", "x+2", "x-3"] }`, or `"rows"` for full control: `{ "expr": "f'(x)", "show": "sign" | "trend", "label"?: tex }` with `"functions": { "f": "x^3 - 3x" }`. Zeros, undefined points and signs are computed; trend rows draw ↗/↘ and mark max/min. `"marks": [{ "x": "sqrt(2)", "tex": "\\sqrt{2}" }]` controls how a point is written; `"range"` limits the search (default ±50, up to 40 critical points). When the columns would be too narrow to read, the chart scrolls sideways with its headings pinned on the left. Simple multiples of π are written as such (−5π, π/2).
 
 **Chart** — `{ "kind": "chart", "type": …, "title"?, "axes"?: { "x"?, "y"? }, "animate"? }`
 
@@ -95,7 +95,7 @@ Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`,
 
 | type | fields |
 |---|---|
-| `surface` | `z` in x and y, `region`? (e.g. `"x^2 + y^2 <= 4"`), `mesh`?, `opacity`? — its id can be called `f(1, 2)`, with partials `f_x`, `f_y`, `f_xy`… |
+| `surface` | `z` in x and y, `region`? (e.g. `"x^2 + y^2 <= 4"`, edges cut exactly), `mesh`? (cells per side, default 48, up to 200), `opacity`? — its id can be called `f(1, 2)`, with partials `f_x`, `f_y`, `f_xy`… |
 | `paramSurface` | `x`, `y`, `z` in u and v, `u`, `v` ranges |
 | `plane` | `equation` (`"x + y + z = 1"`) or `point` + `normal`; cut to the box |
 | `tangentPlane` | `to` (surface id), `at`: [x0, y0], `size`? |

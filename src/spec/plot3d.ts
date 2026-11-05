@@ -7,7 +7,8 @@ export const Point3 = z.tuple([Coord, Coord, Coord]);
 export const Point3Ref = z.union([Point3, Id]);
 const Interval = z.tuple([Coord, Coord]);
 const opacity = z.number().min(0.1).max(1).optional();
-const mesh = z.number().int().min(4).max(80).optional();
+// Up to 200 cells per side (80,000 triangles): easy for a current phone GPU; building it in JS takes a few tens of ms.
+const mesh = z.number().int().min(4).max(200).optional();
 
 /** Graph of z = f(x, y) over the view (or a region of it). Its id can be called f(a, b), with partials f_x, f_y… */
 export const SurfaceEl = z.strictObject({

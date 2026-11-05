@@ -126,7 +126,7 @@ describe('charts', () => {
 });
 
 describe('every Stage 3 figure', () => {
-  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => (f >= '13' && f < '23') || f.startsWith('31') || f.startsWith('32'));
+  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => (f >= '13' && f < '23') || f.startsWith('31') || f.startsWith('32') || f.startsWith('33'));
   it.each(files)('%s: builds, labels inside, last frame = static', (file) => {
     const s = sceneOf(load(`figures/${file}`));
     for (const p of s.primitives) {
@@ -155,7 +155,7 @@ describe('Stage 3 bad input', () => {
     ['bad-inequality.json', /elements\[0\]\.expr: Missing expression/],
     ['histogram-empty.json', /data: a histogram needs at least one value/],
     ['box-empty-group.json', /groups\[0\]\.data: a box plot group needs at least one value/],
-    ['signchart-too-many-points.json', /31 critical points/],
+    ['signchart-too-many-points.json', /51 critical points/],
   ])('%s', (file, msg) => {
     expect(errorsOf(load(`bad/${file}`))).toMatch(msg);
   });
@@ -225,6 +225,29 @@ describe('sign charts with many critical points', () => {
   });
 
   it('more than 12 asks for a narrower range', () => {
-    expect(errorsOf({ kind: 'signChart', f: 'sin(x)', range: [-20, 20], describe: 'x' })).toMatch(/13 critical points.*at most 12/);
+    expect(errorsOf({ kind: 'signChart', f: 'sin(x)', range: [-70, 70], describe: 'x' })).toMatch(/45 critical points.*at most 40/);
+  });
+});
+
+describe('scrolling sign charts', () => {
+  it('19 points (sin x on [−30, 30]): wider than the screen, scrolls, headings frozen, columns readable', () => {
+    const s = sceneOf({ kind: 'signChart', f: 'sin(x)', range: [-30, 30], describe: 'Sign of sin x.' });
+    expect(s.scroll).toBeDefined();
+    expect(s.scroll!.viewportWidth).toBe(W);
+    expect(s.width).toBeGreaterThan(W);
+    const cols = s.primitives.filter((p) => p.key.startsWith('col-')).map((p) => (p.kind === 'line' ? p.from[0] : 0));
+    expect(cols.length).toBe(19);
+    for (let k = 1; k < cols.length; k++) expect(cols[k]! - cols[k - 1]!).toBeGreaterThanOrEqual(30);
+    expect(cols[0]!).toBeGreaterThan(s.scroll!.frozenWidth); // no column hides under the frozen headings
+    const heads = s.primitives.filter((p) => p.kind === 'mathLabel' && /^head-\d+$/.test(p.key)) as Extract<Primitive, { kind: 'mathLabel' }>[];
+    for (let a = 1; a < heads.length; a++) expect(heads[a]!.box.x).toBeGreaterThan(heads[a - 1]!.box.x + heads[a - 1]!.box.width);
+  });
+
+  it('charts that fit do not scroll', () => {
+    expect(sceneOf(load('figures/16-signchart-rational.json')).scroll).toBeUndefined();
+  });
+
+  it('more than 40 points asks for a narrower range', () => {
+    expect(errorsOf({ kind: 'signChart', f: 'sin(x)', range: [-70, 70], describe: 'x' })).toMatch(/at most 40/);
   });
 });

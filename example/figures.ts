@@ -33,6 +33,7 @@ export const stage3: { title: string; figure: unknown }[] = [
   { title: 'Scatter with line of best fit (animated)', figure: require('../examples/figures/22-scatter.json') },
   { title: 'Bar chart with long labels', figure: require('../examples/figures/31-bar-long-labels.json') },
   { title: 'Sign chart with 11 critical points', figure: require('../examples/figures/32-signchart-sin.json') },
+  { title: 'Wide sign chart (scrolls sideways)', figure: require('../examples/figures/33-signchart-scroll.json') },
 ];
 
 export const stage2: { title: string; figure: unknown }[] = [

@@ -9,8 +9,12 @@ import { arrowHead, constValue, exprMessage, finishLabels, makeContext, queueLab
 const HEADER_ROW = 32;
 const HEADER_TIER = 23;
 const ROW_H = 34;
-/** Beyond this the columns get too narrow to read on a phone, whatever the device can draw. */
-const MAX_POINTS = 12;
+/** Columns narrower than this are hard to read on a phone: the chart scrolls sideways instead. */
+const MIN_COL = 30;
+/** Column width when scrolling. */
+const SCROLL_COL = 44;
+/** A sanity bound: more than this many columns means "range" should be narrowed. */
+const MAX_POINTS = 40;
 
 interface Row {
   path: string;
@@ -90,9 +94,18 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
   });
   const labelW = Math.max(measure.text(v, size, 'mathItalic').width, ...rows.map((r, i) => measure.tex(r.label, headingSize[i]!).width));
   const left = Math.min(maxLeft, Math.max(56, labelW + 18));
-  const right = W - 6;
   const cols = xs.length + 1;
-  const colW = (right - left) / cols;
+  // Too many columns to read at this width: the chart gets wider and scrolls sideways,
+  // with the heading column frozen on the left (see ByeFigure).
+  const scrolls = (W - 6 - left) / cols < MIN_COL;
+  // When scrolling, width is free: make columns wide enough for every header value on one row.
+  const widestHead = Math.max(0, ...xs.map((x) => measure.tex(marks.get(x) ?? formatValue(x).tex, size).width));
+  const infWidth = Math.max(measure.tex('-\\infty', size).width, measure.tex('+\\infty', size).width);
+  const firstLast = [xs[0], xs[xs.length - 1]].map((x) => (x === undefined ? 0 : measure.tex(marks.get(x) ?? formatValue(x).tex, size).width));
+  const colW = scrolls ? Math.max(SCROLL_COL, widestHead + 14, 4 + infWidth + Math.max(...firstLast) / 2 + 8) : (W - 6 - left) / cols;
+  const contentW = scrolls ? left + cols * colW + 6 : W;
+  ctx.width = contentW;
+  const right = contentW - 6;
   const bx = (k: number) => left + (k + 1) * colW; // x of critical point k
 
   // Header values: one size for all, as large as fits the column. If they still don't fit side by side,
@@ -120,10 +133,10 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
   const withAnim = (a: PrimAnim | undefined) => (a ? { anim: a } : {});
 
   // frame lines
-  prims.push({ kind: 'line', key: 'head-line', role: 'axis', clip: false, from: [0, HEADER_H], to: [W, HEADER_H] });
+  prims.push({ kind: 'line', key: 'head-line', role: 'axis', clip: false, from: [0, HEADER_H], to: [contentW, HEADER_H] });
   prims.push({ kind: 'line', key: 'left-line', role: 'axis', clip: false, from: [left, 2], to: [left, H] });
   rows.forEach((_, r) => {
-    if (r > 0) prims.push({ kind: 'line', key: `row-line-${r}`, role: 'grid', clip: false, from: [0, rowY(r)], to: [W, rowY(r)] });
+    if (r > 0) prims.push({ kind: 'line', key: `row-line-${r}`, role: 'grid', clip: false, from: [0, rowY(r)], to: [contentW, rowY(r)] });
   });
   xs.forEach((_, k) => prims.push({ kind: 'line', key: `col-${k}`, role: 'grid', clip: false, from: [bx(k), HEADER_H], to: [bx(k), H], dash: [3, 3] }));
 
@@ -166,7 +179,7 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
         const before = signAt(row.analysis, x - 1e-6 * Math.max(1, Math.abs(x)));
         const after = signAt(row.analysis, x + 1e-6 * Math.max(1, Math.abs(x)));
         const word = before === 1 && after === -1 ? 'max' : before === -1 && after === 1 ? 'min' : null;
-        if (word) queueLabel(ctx, `r${r}-z${k}`, { text: word }, 'note', cell(bx(k), cy + 9), { font: 'note', size: theme.fontSize.note, ...withAnim(a) });
+        if (word) queueLabel(ctx, `r${r}-z${k}`, { text: word }, 'note', cell(bx(k), rowY(r) + ROW_H - 8), { font: 'note', size: theme.fontSize.note, ...withAnim(a) });
       }
     });
     // each interval
@@ -188,9 +201,10 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
         queueLabel(ctx, `r${r}-c${j}`, { text }, sign === 1 ? 'F' : sign === -1 ? 'bound' : 'text', cell(cx, cy), { font: 'math', size: size + 3, ...withAnim(a) });
       } else {
         const dx = Math.min(16, colW * 0.3);
-        const dy = sign === 0 ? 0 : sign === 1 ? -8 : 8;
-        const from: [number, number] = [cx - dx, cy - dy];
-        const to: [number, number] = [cx + dx, cy + dy];
+        const dy = sign === 0 ? 0 : sign === 1 ? -6 : 6;
+        const ay = cy - 4; // a little above centre, leaving room for "max" / "min" below
+        const from: [number, number] = [cx - dx, ay - dy];
+        const to: [number, number] = [cx + dx, ay + dy];
         const head = arrowHead(to[0], to[1], to[0] - from[0], to[1] - from[1], 7);
         prims.push({ kind: 'line', key: `r${r}-c${j}`, role: 'f', clip: false, from, to: [to[0] - (to[0] - from[0]) * 0.15, to[1] - (to[1] - from[1]) * 0.15], width: 2, ...withAnim(a) });
         prims.push({ kind: 'polygon', key: `r${r}-h${j}`, role: 'f', clip: false, points: head, fillOpacity: 1, ...withAnim(a) });
@@ -203,14 +217,15 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
   return {
     ok: true,
     scene: {
-      width: W,
+      width: contentW,
       height: H,
-      plot: { x: 0, y: 0, width: W, height: H },
-      viewport: { x: [range[0], range[1]], y: [0, 1], width: W, height: H, padding: { top: 0, bottom: 0, left, right: W - right } },
+      plot: { x: 0, y: 0, width: contentW, height: H },
+      viewport: { x: [range[0], range[1]], y: [0, 1], width: contentW, height: H, padding: { top: 0, bottom: 0, left, right: contentW - right } },
       primitives: prims,
       describe: fig.describe,
       samples: {},
       theme,
+      ...(scrolls ? { scroll: { viewportWidth: W, frozenWidth: left } } : {}),
     },
   };
 }

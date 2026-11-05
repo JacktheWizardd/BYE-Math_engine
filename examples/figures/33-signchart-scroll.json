@@ -1,0 +1,23 @@
+{
+  "spec": 0,
+  "kind": "signChart",
+  "functions": {
+    "f": "sin(x)"
+  },
+  "rows": [
+    {
+      "expr": "f(x)",
+      "label": "\\sin x"
+    },
+    {
+      "expr": "f'(x)",
+      "show": "trend",
+      "label": "\\sin x"
+    }
+  ],
+  "range": [
+    -30,
+    30
+  ],
+  "describe": "Sign and trend of sin x between −30 and 30: zero at every multiple of π from −9π to 9π; it rises and falls between its maxima and minima. The chart scrolls sideways."
+}
