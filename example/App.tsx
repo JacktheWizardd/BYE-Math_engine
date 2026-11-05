@@ -6,7 +6,7 @@ import { ZenKakuGothicNew_400Regular } from '@expo-google-fonts/zen-kaku-gothic-
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ByeFigure } from 'bye-math-engine/native';
 import 'bye-math-engine/native3d'; // lets ByeFigure draw plot3d figures
-import { badInputs, gallery, stage2, stage3, stage4 } from './figures';
+import { badInputs, gallery, showcase, stage2, stage3, stage4 } from './figures';
 
 const ink = '#1e1c19';
 const ink2 = '#5a554d';
@@ -51,6 +51,12 @@ export default function App() {
           </Pressable>
         </View>
 
+        <Text style={[styles.h1, styles.section]}>Physics & engineering</Text>
+        {showcase.map(({ title, figure }) => (
+          <Card key={title} title={title} figure={figure} replayKey={replayKey} reduceMotion={reduceMotion} />
+        ))}
+
+        <Text style={[styles.h1, styles.section]}>Stage 4: 3D</Text>
         {stage4.map(({ title, figure }) => (
           <Card key={title} title={title} figure={figure} replayKey={replayKey} reduceMotion={reduceMotion} />
         ))}

@@ -1,0 +1,18 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": { "x": [0, 1], "y": [0, 1], "z": [-1, 1] },
+  "camera": { "azimuth": -50, "elevation": 30 },
+  "elements": [
+    {
+      "id": "w",
+      "type": "surface",
+      "z": "0.8 sin(2pi x) sin(pi y)",
+      "mesh": 60,
+      "label": { "tex": "w = \\sin 2\\pi x \\, \\sin \\pi y" },
+      "animate": { "duration": 1200 }
+    },
+    { "type": "contour", "f": "w", "levels": [-0.6, -0.3, 0.3, 0.6] }
+  ],
+  "describe": "Vibration mode (2, 1) of a simply supported square plate: w = 0.8 sin 2πx sin πy. One half bulges up while the other dips down, with a nodal line along x = 1/2."
+}

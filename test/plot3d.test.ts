@@ -139,7 +139,7 @@ describe('camera and overlay', () => {
 });
 
 describe('every 3D figure', () => {
-  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => f.startsWith('2') && JSON.parse(readFileSync(join(import.meta.dirname, `../examples/figures/${f}`), 'utf8')).kind === 'plot3d');
+  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => JSON.parse(readFileSync(join(import.meta.dirname, `../examples/figures/${f}`), 'utf8')).kind === 'plot3d');
   it.each(files)('%s builds', (f) => {
     const s = sceneOf(load(`figures/${f}`));
     expect(s.meshes.length + s.lines.length).toBeGreaterThan(0);

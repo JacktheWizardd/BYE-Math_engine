@@ -1,0 +1,20 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": { "x": [-1.5, 1.5], "y": [-1.5, 1.5], "z": [0, 3.6] },
+  "camera": { "azimuth": -50, "elevation": 18 },
+  "elements": [
+    {
+      "type": "curve",
+      "x": "cos(t)",
+      "y": "sin(t)",
+      "z": "0.01 t^2",
+      "t": [0, "6pi"],
+      "label": { "tex": "\\mathbf{r}(t)" }
+    },
+    { "type": "vector", "from": [0, 0, 0], "components": [0, 0, 1.4], "label": { "tex": "\\mathbf{B},\\ \\mathbf{E}" } },
+    { "id": "P", "type": "point", "at": ["cos(4pi)", "sin(4pi)", "0.01 (4pi)^2"], "label": { "text": "P" } },
+    { "type": "vector", "from": "P", "components": ["-sin(4pi)", "cos(4pi)", "0.02 (4pi)"], "role": "f", "label": { "tex": "\\mathbf{v}" } }
+  ],
+  "describe": "A charged particle in parallel magnetic and electric fields along z: it circles around the field lines while the electric field speeds it up along z, so the helix stretches out. The velocity vector is drawn at P (t = 4π)."
+}

@@ -1,0 +1,17 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": { "x": [-3, 3], "y": [-3, 3], "z": [-3, 3] },
+  "camera": { "azimuth": -118, "elevation": 16 },
+  "elements": [
+    {
+      "id": "V",
+      "type": "surface",
+      "z": "1/sqrt((x-1)^2 + y^2 + 0.12) - 1/sqrt((x+1)^2 + y^2 + 0.12)",
+      "mesh": 90,
+      "label": { "tex": "V(x,y)" }
+    },
+    { "type": "contour", "f": "V", "levels": [-2, -1, -0.5, -0.2, 0.2, 0.5, 1, 2] }
+  ],
+  "describe": "Electric potential of a dipole: a positive charge at (1, 0) and a negative charge at (−1, 0). The surface peaks above the positive charge and dips below the negative one; equipotential curves are drawn on the floor."
+}

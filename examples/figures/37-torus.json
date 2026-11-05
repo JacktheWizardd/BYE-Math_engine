@@ -1,0 +1,20 @@
+{
+  "spec": 0,
+  "kind": "plot3d",
+  "view": { "x": [-2.8, 2.8], "y": [-2.8, 2.8], "z": [-1.2, 1.2] },
+  "equalAxes": true,
+  "camera": { "azimuth": -55, "elevation": 35 },
+  "elements": [
+    {
+      "type": "paramSurface",
+      "x": "(2 + 0.7cos(v)) cos(u)",
+      "y": "(2 + 0.7cos(v)) sin(u)",
+      "z": "0.7 sin(v)",
+      "u": [0, "2pi"],
+      "v": [0, "2pi"],
+      "mesh": 64,
+      "label": { "tex": "R = 2,\\ r = 0.7" }
+    }
+  ],
+  "describe": "Torus with major radius 2 and minor radius 0.7 — the shape of a toroidal inductor core or an O-ring seal."
+}

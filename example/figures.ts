@@ -9,6 +9,13 @@ export const gallery: { title: string; figure: unknown }[] = [
   { title: 'y = tan x', figure: require('../examples/figures/07-tan.json') },
 ];
 
+export const showcase: { title: string; figure: unknown }[] = [
+  { title: 'Physics: electric dipole potential', figure: require('../examples/figures/34-dipole-potential.json') },
+  { title: 'Engineering: plate vibration mode (2, 1)', figure: require('../examples/figures/35-plate-mode.json') },
+  { title: 'Physics: charged particle in B and E fields', figure: require('../examples/figures/36-charged-particle.json') },
+  { title: 'Engineering: torus (toroidal core)', figure: require('../examples/figures/37-torus.json') },
+];
+
 export const stage4: { title: string; figure: unknown }[] = [
   { title: 'Saddle z = x² − y² (drag to rotate)', figure: require('../examples/figures/23-saddle.json') },
   { title: 'Paraboloid over a disk, level curves', figure: require('../examples/figures/24-paraboloid-contours.json') },
