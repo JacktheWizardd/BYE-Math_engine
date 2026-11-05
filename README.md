@@ -91,7 +91,7 @@ Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`,
 | `dot` | `data`, `step`? |
 | `scatter` | `points`: [[x, y], …], `fit`: `linear` (least squares, equation and r shown) |
 
-**3D** — `{ "kind": "plot3d", "view": { "x", "y", "z" }, "camera"?: { "azimuth", "elevation", "zoom" }, "rotate"?: true, "equalAxes"?: false, "axes"?: { "labels", "box" } }`. Needs the optional peer dependencies `three` and `expo-gl` (both in Expo Go): `npx expo install expo-gl && npm install three`, then `import 'bye-math-engine/native3d'` once. Drag to rotate (a drag that starts on a rotatable figure rotates it instead of scrolling the page).
+**3D** — `{ "kind": "plot3d", "view": { "x", "y", "z" }, "camera"?: { "azimuth", "elevation", "zoom" }, "rotate"?: true, "equalAxes"?: false, "axes"?: { "labels", "box" } }`. Needs the optional peer dependencies `three` and `expo-gl` (both in Expo Go): `npx expo install expo-gl && npm install three`, then `import 'bye-math-engine/native3d'` once. Drag to rotate (a drag that starts on a rotatable figure rotates it instead of scrolling the page). `autoRotate` (prop: `true` or degrees per second) slowly turns the figure after its animation to show it can be rotated; it stops once the user drags, and never runs under Reduce Motion.
 
 | type | fields |
 |---|---|
@@ -129,3 +129,12 @@ npm run gen:parser  # after editing grammar.peggy
 ```
 
 Gallery app: see [example/](example/) (`cd example && npm install && npx expo start`).
+
+Shareable 3D page (one HTML file, opens by double-click, no server):
+
+```bash
+cd example && EXPO_PUBLIC_SHOWCASE=3d npx expo export -p web --output-dir /tmp/bye-dist
+python3 scripts/pack-html.py /tmp/bye-dist ../docs/share/bye-math-engine-3d.html
+```
+
+Add `--font ZenKakuGothicNew_400Regular=<latin-subset>.ttf` to shrink it from ~7.5 MB to ~4.7 MB (subset with `pyftsubset`).

@@ -30,6 +30,12 @@ export interface ByeFigureProps {
   reduceMotion?: boolean;
   /** Clock used for animation (default: requestAnimationFrame). */
   animationDriver?: AnimationDriver;
+  /**
+   * 3D only: slowly turn the figure (degrees per second; true = 10) after its
+   * animation, to show it can be rotated. Stops for good once the user drags it.
+   * Never under Reduce Motion, and not for figures with "rotate": false.
+   */
+  autoRotate?: boolean | number;
 }
 
 const describeOf = (figure: unknown): string | undefined => {

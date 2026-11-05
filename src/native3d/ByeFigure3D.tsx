@@ -33,6 +33,7 @@ export function ByeFigure3D({
   onAnimationEnd,
   reduceMotion,
   animationDriver = rafDriver,
+  autoRotate,
 }: ByeFigureProps) {
   const [measured, setMeasured] = useState<number | null>(null);
   const width = fixedWidth ?? measured;
@@ -52,6 +53,8 @@ export function ByeFigure3D({
   const camRef = useRef(cam);
   camRef.current = cam;
   const start = useRef(cam);
+  // Once the user drags, auto-rotation stops for good.
+  const [touched, setTouched] = useState(false);
   const pan = useMemo(
     () =>
       PanResponder.create({
@@ -59,6 +62,7 @@ export function ByeFigure3D({
         onMoveShouldSetPanResponder: () => !!scene?.rotate,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
+          setTouched(true);
           start.current = camRef.current;
         },
         onPanResponderMove: (_e, g) => {
@@ -73,6 +77,20 @@ export function ByeFigure3D({
   const total = scene ? timeline3d(scene) : 0;
   const clock = useFigureClock({ total, animate, reduceMotion, driver: animationDriver, restartKeys: [figure, replayKey], onEnd: onAnimationEnd });
   const ms = !clock.wantsMotion || clock.reduce === true || clock.done ? Infinity : clock.playing ? clock.ms : 0;
+
+  // auto-rotate: after the entrance animation, turn slowly about the z-axis
+  const spinSpeed = autoRotate === true ? 10 : typeof autoRotate === 'number' ? autoRotate : 0;
+  const entranceOver = !clock.wantsMotion || clock.done;
+  const spinning = spinSpeed !== 0 && !!scene?.rotate && !touched && clock.reduce === false && entranceOver;
+  useEffect(() => {
+    if (!spinning) return;
+    const az0 = camRef.current.azimuth;
+    return animationDriver.start(
+      Number.POSITIVE_INFINITY,
+      (t) => setCamera({ ...camRef.current, azimuth: az0 - (t * spinSpeed) / 1000 }),
+      () => {},
+    );
+  }, [spinning, spinSpeed, animationDriver]);
 
   // GL: build once per scene, redraw on camera / time change
   const gl = useRef<GLScene | null>(null);

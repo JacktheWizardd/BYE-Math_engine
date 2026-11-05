@@ -23,11 +23,77 @@ function Card({ title, figure, replayKey, reduceMotion }: { title: string; figur
   );
 }
 
+// Build with EXPO_PUBLIC_SHOWCASE=3d for a page with only the 3D figures (for sharing).
+const SHOWCASE_3D = process.env.EXPO_PUBLIC_SHOWCASE === '3d';
+const is3d = (f: { figure: unknown }) => (f.figure as { kind?: string }).kind === 'plot3d';
+
+// Showcase: give every element an entrance (surfaces rise, curves draw, the rest fade in),
+// main shapes first, then planes, then level curves, then points and arrows.
+type El = { type: string; animate?: unknown };
+const stepOf = (type: string) => (['surface', 'paramSurface', 'curve'].includes(type) ? 0 : ['plane', 'tangentPlane'].includes(type) ? 1 : type === 'contour' ? 2 : 3);
+const withEntrance = (figure: unknown) => {
+  const f = figure as { elements: El[] };
+  return {
+    ...f,
+    elements: f.elements.map((el) => {
+      const step = stepOf(el.type);
+      const main = step === 0;
+      return el.animate ? el : { ...el, animate: { duration: main ? 1600 : 700, delay: main ? 0 : 1300 + (step - 1) * 450 } };
+    }),
+  };
+};
+const showcase3d = [
+  { heading: 'Physics & engineering', items: showcase },
+  { heading: 'Calculus III', items: stage4.filter(is3d).map((f) => ({ ...f, title: f.title.replace(' (drag to rotate)', '') })) },
+].map((g) => ({ ...g, items: g.items.map((f) => ({ ...f, figure: withEntrance(f.figure) })) }));
+
+function ShowcaseCard({ title, figure, replayKey }: { title: string; figure: unknown; replayKey: number }) {
+  return (
+    <View style={[styles.cell, styles.card]}>
+      <Text style={styles.h2}>{title}</Text>
+      <ByeFigure figure={figure} replayKey={replayKey} autoRotate={8} />
+      <Text style={styles.describe}>{(figure as { describe: string }).describe}</Text>
+    </View>
+  );
+}
+
+function Showcase3D() {
+  const [replayKey, setReplayKey] = useState(0);
+  return (
+    <ScrollView contentContainerStyle={[styles.content, styles.wide]}>
+      <Text style={styles.h1}>BYE Math Engine · 3D</Text>
+      <Text style={styles.sub}>Drag any figure to rotate it. Every figure is drawn from a short JSON description.</Text>
+      <View style={styles.controls}>
+        <Pressable onPress={() => setReplayKey((k) => k + 1)} style={styles.button} accessibilityRole="button">
+          <Text style={styles.buttonText}>Replay animations</Text>
+        </Pressable>
+      </View>
+      {showcase3d.map(({ heading, items }) => (
+        <View key={heading}>
+          <Text style={[styles.h1, styles.section]}>{heading}</Text>
+          <View style={styles.grid}>
+            {items.map(({ title, figure }) => (
+              <ShowcaseCard key={title} title={title} figure={figure} replayKey={replayKey} />
+            ))}
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({ STIXTwoText_400Regular, STIXTwoText_400Regular_Italic, ZenKakuGothicNew_400Regular });
   const [replayKey, setReplayKey] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   if (!fontsLoaded) return <View style={styles.screen} />;
+  if (SHOWCASE_3D) {
+    return (
+      <View style={styles.screen}>
+        <Showcase3D />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -102,6 +168,9 @@ const styles = StyleSheet.create({
   buttonOn: { backgroundColor: ai },
   buttonTextOn: { color: paper },
   card: { marginTop: 20 },
+  wide: { maxWidth: 1180 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -14 },
+  cell: { width: 350, maxWidth: '100%', paddingHorizontal: 14 },
   h2: { fontFamily: 'ZenKakuGothicNew_400Regular', fontSize: 14, color: ink, marginBottom: 6 },
   describe: { fontFamily: 'ZenKakuGothicNew_400Regular', fontSize: 12, color: ink2, marginTop: 6, lineHeight: 17 },
 });
