@@ -1,0 +1,56 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": {
+    "x": [
+      -2,
+      5
+    ],
+    "y": [
+      -5,
+      6
+    ]
+  },
+  "grid": {
+    "x": 1,
+    "y": 1
+  },
+  "axes": {
+    "x": true,
+    "y": true,
+    "labels": false
+  },
+  "elements": [
+    {
+      "id": "f",
+      "type": "function",
+      "y": "(x+1)(x-3)",
+      "role": "f",
+      "label": {
+        "tex": "f(x) = x^2 - 2x - 3",
+        "at": 4.1
+      }
+    },
+    {
+      "type": "point",
+      "on": "f",
+      "x": -1,
+      "role": "bound",
+      "label": {
+        "text": "−1",
+        "at": "above"
+      }
+    },
+    {
+      "type": "point",
+      "on": "f",
+      "x": 3,
+      "role": "bound",
+      "label": {
+        "text": "3",
+        "at": "above"
+      }
+    }
+  ],
+  "describe": "Parabola f(x) = x² − 2x − 3 crossing the x-axis at x = −1 and x = 3."
+}

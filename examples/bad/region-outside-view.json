@@ -1,0 +1,1 @@
+{ "kind": "plot2d", "view": { "x": [0, 4], "y": [0, 9] }, "elements": [ { "id": "f", "type": "function", "y": "2x+1" }, { "type": "region", "under": "f", "from": 1, "to": 6 } ], "describe": "Region too wide." }

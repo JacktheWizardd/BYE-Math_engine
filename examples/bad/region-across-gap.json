@@ -1,0 +1,1 @@
+{ "kind": "plot2d", "view": { "x": [-3, 3], "y": [-4, 4] }, "elements": [ { "id": "f", "type": "function", "y": "1/x" }, { "type": "region", "under": "f", "from": -1, "to": 1 } ], "describe": "Region over an asymptote." }

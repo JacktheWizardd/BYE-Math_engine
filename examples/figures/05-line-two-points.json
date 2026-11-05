@@ -1,0 +1,14 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-1, 4], "y": [-1, 5] },
+  "grid": { "x": 1, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": false },
+  "elements": [
+    { "id": "f", "type": "function", "y": "sqrt(x)*2", "domain": [0, 4], "role": "f", "label": { "text": "f", "at": 3.6 } },
+    { "type": "line", "through": [[1, "f(1)"], [2.5, "f(2.5)"]], "role": "bound", "label": { "text": "secant", "at": 0 } },
+    { "type": "point", "on": "f", "x": 1, "role": "bound", "label": { "text": "P", "at": "above" } },
+    { "type": "point", "on": "f", "x": 2.5, "role": "bound", "label": { "text": "Q", "at": "below" } }
+  ],
+  "describe": "Curve y = 2√x with a straight line through P = (1, 2) and Q = (2.5, 2√2.5), approaching a tangent."
+}

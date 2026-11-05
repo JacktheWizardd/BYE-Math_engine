@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gallery-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "example", "run", "web", "--", "--port", "8081"],
+      "port": 8081
+    }
+  ]
+}

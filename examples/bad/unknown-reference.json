@@ -1,0 +1,1 @@
+{ "kind": "plot2d", "view": { "x": [0, 4], "y": [0, 9] }, "elements": [ { "type": "point", "on": "g", "x": 1 } ], "describe": "Point on a missing function." }

@@ -1,0 +1,11 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-3, 3], "y": [-4, 4] },
+  "grid": { "x": 1, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": true },
+  "elements": [
+    { "id": "f", "type": "function", "y": "1/x", "role": "f", "label": { "tex": "y = \\frac{1}{x}", "at": 2.2 } }
+  ],
+  "describe": "Graph of y = 1/x on −3 to 3, with an asymptote at x = 0 and no line drawn across it."
+}

@@ -1,0 +1,12 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-2, 4], "y": [-3, 5] },
+  "grid": { "x": 1, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": true },
+  "elements": [
+    { "type": "line", "point": [1, 2], "slope": -0.5, "role": "f", "label": { "tex": "y - 2 = -\\tfrac{1}{2}(x - 1)", "at": "center" } },
+    { "type": "point", "at": [1, 2], "role": "bound", "label": { "text": "(1, 2)", "at": "above" } }
+  ],
+  "describe": "Line through the point (1, 2) with slope −1/2."
+}

@@ -1,0 +1,80 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": {
+    "x": [
+      -0.5,
+      2.5
+    ],
+    "y": [
+      -0.5,
+      4.5
+    ]
+  },
+  "grid": {
+    "x": 0.5,
+    "y": 1
+  },
+  "axes": {
+    "x": true,
+    "y": true,
+    "labels": false
+  },
+  "elements": [
+    {
+      "id": "f",
+      "type": "function",
+      "y": "2x",
+      "role": "f",
+      "label": {
+        "tex": "y = 2x",
+        "at": 2.1
+      }
+    },
+    {
+      "id": "g",
+      "type": "function",
+      "y": "x^2",
+      "role": "F",
+      "label": {
+        "tex": "y = x^2",
+        "at": 1.6
+      }
+    },
+    {
+      "type": "region",
+      "between": [
+        "f",
+        "g"
+      ],
+      "from": 0,
+      "to": 2,
+      "role": "area",
+      "label": {
+        "tex": "\\frac{4}{3}",
+        "at": "center"
+      }
+    },
+    {
+      "type": "point",
+      "at": [
+        0,
+        0
+      ],
+      "role": "bound"
+    },
+    {
+      "type": "point",
+      "at": [
+        2,
+        4
+      ],
+      "role": "bound",
+      "label": {
+        "text": "(2, 4)",
+        "at": "right"
+      }
+    }
+  ],
+  "describe": "Area between y = 2x and y = x² from x = 0 to x = 2, equal to 4/3."
+}

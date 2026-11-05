@@ -1,0 +1,11 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-4.8, 4.8], "y": [-4, 4] },
+  "grid": { "x": 1.5707963267948966, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": false },
+  "elements": [
+    { "id": "f", "type": "function", "y": "tan(x)", "role": "f", "label": { "tex": "\\tan x", "at": 0.9 } }
+  ],
+  "describe": "Graph of y = tan x, with asymptotes at odd multiples of π/2 and no lines drawn across them."
+}

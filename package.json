@@ -1,0 +1,63 @@
+{
+  "name": "bye-math-engine",
+  "version": "0.1.0",
+  "description": "BYE Math Engine: math figures from a JSON description, drawn natively. Inspired by Mafs and JSXGraph.",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "files": [
+    "lib",
+    "src",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "exports": {
+    "./spec": {
+      "types": "./src/spec/index.ts",
+      "react-native": "./src/spec/index.ts",
+      "default": "./lib/spec/index.js"
+    },
+    "./core": {
+      "types": "./src/core/index.ts",
+      "react-native": "./src/core/index.ts",
+      "default": "./lib/core/index.js"
+    },
+    "./expr": {
+      "types": "./src/expr/index.ts",
+      "react-native": "./src/expr/index.ts",
+      "default": "./lib/expr/index.js"
+    },
+    "./native": {
+      "types": "./src/native/index.ts",
+      "react-native": "./src/native/index.ts",
+      "default": "./lib/native/index.js"
+    }
+  },
+  "scripts": {
+    "gen:parser": "peggy --format es --dts -o src/expr/parser.generated.js src/expr/grammar.peggy",
+    "build": "npm run gen:parser && tsc -p tsconfig.build.json && cp src/expr/parser.generated.* lib/expr/",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "react-native-mathjax-svg": "0.9.9",
+    "zod": "^4.6.7"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*",
+    "react-native-svg": ">=15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "eslint": "^10.14.0",
+    "peggy": "^5.1.1",
+    "react": "^19.3.1",
+    "react-native": "^0.88.1",
+    "react-native-svg": "^15.16.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}
