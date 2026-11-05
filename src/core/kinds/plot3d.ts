@@ -209,78 +209,120 @@ function build(fig: Plot3dFigure, opts: SceneOptions): Scene3DResult {
   };
 
   /** Mesh over a parameter grid. r returns math coords (NaN = hole); keep(i, j) can drop vertices. */
+  /**
+   * Mesh over a parameter grid. r returns math coords (NaN = hole); keep(p, s, t) limits it to a region.
+   * Cells that straddle the edge of the region (or of where r is defined) are cut exactly along it:
+   * crossing points are found by bisection on each grid edge and shared between neighbouring cells,
+   * so rims are smooth and the mesh stays watertight at any mesh size.
+   */
   const gridMesh = (key: string, role: AnyRole, opacity: number, n: number, r: (s: number, t: number) => M3, normalAt: (s: number, t: number, p: M3) => V3 | null, sr: [number, number], tr: [number, number], keep?: (p: M3, s: number, t: number) => boolean, anim?: Anim3) => {
-    const verts: (V3 | null)[] = [];
-    const norms: V3[] = [];
     const param = (k: number, j: number): [number, number] => [sr[0] + ((sr[1] - sr[0]) * k) / n, tr[0] + ((tr[1] - tr[0]) * j) / n];
     const inside = (s: number, t: number) => {
       const p = r(s, t);
       return p.every(Number.isFinite) && (!keep || keep(p, s, t));
     };
-    const okGrid: boolean[] = [];
-    for (let j = 0; j <= n; j++) for (let k = 0; k <= n; k++) okGrid.push(inside(...param(k, j)));
-    const idx = (k: number, j: number) => j * (n + 1) + k;
-    for (let j = 0; j <= n; j++) {
-      for (let k = 0; k <= n; k++) {
-        let [s, t] = param(k, j);
-        let ok = okGrid[idx(k, j)]!;
-        if (!ok) {
-          // Outside vertex next to an inside one: move it onto the boundary (bisection along the grid
-          // edge), so region rims and domain edges come out smooth instead of stair-stepped.
-          const nb = ([[k - 1, j], [k + 1, j], [k, j - 1], [k, j + 1]] as const).find(([a, b]) => a >= 0 && b >= 0 && a <= n && b <= n && okGrid[idx(a, b)]);
-          if (nb) {
-            let [is, it] = param(nb[0], nb[1]);
-            let [os, ot] = [s, t];
-            for (let q = 0; q < 40; q++) {
-              const ms = (is + os) / 2, mt = (it + ot) / 2;
-              if (inside(ms, mt)) [is, it] = [ms, mt];
-              else [os, ot] = [ms, mt];
-            }
-            [s, t] = [is, it];
-            ok = true;
-          }
-        }
-        const p = r(s, t);
-        verts.push(ok ? toBox(p) : null);
-        norms.push((ok && normalAt(s, t, p)) || [0, 0, 1]);
-      }
-    }
+    const ok: boolean[] = [];
+    for (let j = 0; j <= n; j++) for (let k = 0; k <= n; k++) ok.push(inside(...param(k, j)));
+    const at = (k: number, j: number) => ok[j * (n + 1) + k]!;
+
     const positions: number[] = [];
     const normals: number[] = [];
-    const remap = new Map<number, number>();
-    const use = (v: number) => {
-      if (!remap.has(v)) {
-        remap.set(v, positions.length / 3);
-        positions.push(...verts[v]!);
-        normals.push(...norms[v]!);
-      }
-      return remap.get(v)!;
+    const vertexOf = new Map<string, number>();
+    const pointOf: V3[] = [];
+    const addVertex = (key: string, s: number, t: number): number => {
+      const hit = vertexOf.get(key);
+      if (hit !== undefined) return hit;
+      const p = r(s, t);
+      const v = toBox(p);
+      const id = positions.length / 3;
+      positions.push(...v);
+      normals.push(...(normalAt(s, t, p) ?? [0, 0, 1]));
+      pointOf.push(v);
+      vertexOf.set(key, id);
+      return id;
     };
+    const corner = (k: number, j: number) => addVertex(`c${k},${j}`, ...param(k, j));
+    /** Crossing on the grid edge from (k, j) to (k2, j2); bisection keeps the inside end, so it lies in the region. */
+    const crossing = (ka: number, ja: number, kb: number, jb: number) => {
+      // key by the lower end so both neighbouring cells share the vertex
+      const [k, j, k2, j2] = kb > ka || jb > ja ? [ka, ja, kb, jb] : [kb, jb, ka, ja];
+      const key = k2 > k ? `h${k},${j}` : `v${k},${j}`;
+      if (vertexOf.has(key)) return vertexOf.get(key)!;
+      let [is, it] = param(k, j);
+      let [os, ot] = param(k2, j2);
+      if (!at(k, j)) [is, it, os, ot] = [os, ot, is, it];
+      for (let q = 0; q < 48; q++) {
+        const ms = (is + os) / 2, mt = (it + ot) / 2;
+        if (inside(ms, mt)) [is, it] = [ms, mt];
+        else [os, ot] = [ms, mt];
+      }
+      return addVertex(key, is, it);
+    };
+
     const indices: number[] = [];
+    const fan = (poly: number[]) => {
+      for (let q = 1; q < poly.length - 1; q++) indices.push(poly[0]!, poly[q]!, poly[q + 1]!);
+    };
     for (let j = 0; j < n; j++) {
       for (let k = 0; k < n; k++) {
-        const a = idx(k, j), b = idx(k + 1, j), c = idx(k + 1, j + 1), d = idx(k, j + 1);
-        for (const tri of [[a, b, c], [a, c, d]]) if (tri.every((v) => verts[v])) indices.push(...tri.map(use));
+        // corners counter-clockwise: (k,j) (k+1,j) (k+1,j+1) (k,j+1)
+        const cs: [number, number][] = [[k, j], [k + 1, j], [k + 1, j + 1], [k, j + 1]];
+        const ins = cs.map(([a, b]) => at(a, b));
+        const count = ins.filter(Boolean).length;
+        if (count === 0) continue;
+        if (count === 4) {
+          fan(cs.map(([a, b]) => corner(a, b)));
+          continue;
+        }
+        if (count === 2 && ins[0] === ins[2]) {
+          // opposite corners inside (saddle case): a small triangle at each inside corner
+          cs.forEach(([a, b], q) => {
+            if (!ins[q]) return;
+            const [pa, pb] = cs[(q + 3) % 4]!;
+            const [na, nb] = cs[(q + 1) % 4]!;
+            fan([crossing(pa, pb, a, b), corner(a, b), crossing(a, b, na, nb)]);
+          });
+          continue;
+        }
+        // walk the cell boundary: inside corners, plus a crossing wherever an edge leaves or enters
+        const poly: number[] = [];
+        cs.forEach(([a, b], q) => {
+          const [c2, d2] = cs[(q + 1) % 4]!;
+          if (ins[q]) poly.push(corner(a, b));
+          if (ins[q] !== ins[(q + 1) % 4]) poly.push(crossing(a, b, c2, d2));
+        });
+        if (poly.length >= 3) fan(poly);
       }
     }
     if (!indices.length) return false;
     meshes.push({ key, role, opacity, positions, normals, indices, ...(anim ? { anim } : {}) });
-    // mesh lines every few grid lines
+
+    // mesh lines every few grid lines, cut at the same crossings
     const every = Math.max(1, Math.round(n / 8));
     let q = 0;
-    const run = (pts: (V3 | null)[]) => {
-      let cur: V3[] = [];
-      for (const p of pts) {
-        if (p) cur.push(p);
-        else {
-          if (cur.length > 1) lines.push({ key: `${key}-mesh-${q++}`, role, points: cur, width: 0.75, ...(anim ? { anim } : {}) });
-          cur = [];
-        }
-      }
+    const emit = (cur: V3[]) => {
       if (cur.length > 1) lines.push({ key: `${key}-mesh-${q++}`, role, points: cur, width: 0.75, ...(anim ? { anim } : {}) });
     };
-    for (let j = 0; j <= n; j += every) run(Array.from({ length: n + 1 }, (_, k) => verts[idx(k, j)]!));
-    for (let k = 0; k <= n; k += every) run(Array.from({ length: n + 1 }, (_, j) => verts[idx(k, j)]!));
+    const trace = (cellAt: (m: number) => [number, number]) => {
+      let cur: V3[] = [];
+      for (let m = 0; m <= n; m++) {
+        const [a, b] = cellAt(m);
+        if (at(a, b)) cur.push(pointOf[corner(a, b)]!);
+        if (m < n) {
+          const [c2, d2] = cellAt(m + 1);
+          if (at(a, b) !== at(c2, d2)) {
+            cur.push(pointOf[crossing(a, b, c2, d2)]!);
+            if (at(a, b)) {
+              emit(cur);
+              cur = [];
+            }
+          }
+        }
+      }
+      emit(cur);
+    };
+    for (let j = 0; j <= n; j += every) trace((m) => [m, j]);
+    for (let k = 0; k <= n; k += every) trace((m) => [k, m]);
     return true;
   };
 

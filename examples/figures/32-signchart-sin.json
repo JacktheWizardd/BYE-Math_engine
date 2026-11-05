@@ -1,0 +1,10 @@
+{
+  "spec": 0,
+  "kind": "signChart",
+  "f": "sin(x)",
+  "range": [
+    -18,
+    18
+  ],
+  "describe": "Sign of sin x between −18 and 18: zero at every multiple of π from −5π to 5π, alternating sign in between."
+}

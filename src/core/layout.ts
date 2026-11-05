@@ -14,8 +14,23 @@ export interface Measure {
   tex(tex: string, fontSize: number): { width: number; height: number };
 }
 
+/** Per-character width (em) for the sans note font: narrow letters, wide letters, CJK. Calibrated on Zen Kaku Gothic New. */
+const noteEm = (c: string): number => {
+  if (/[\u3000-\u9fff\uff00-\uffef]/.test(c)) return 1;
+  if (/[iljI.,:;!|'’]/.test(c)) return 0.27;
+  if (/[ftr()[\]\-/]/.test(c)) return 0.34;
+  if (c === ' ') return 0.27;
+  if (/[mwMW]/.test(c)) return 0.8;
+  if (/[A-Z]/.test(c)) return 0.63;
+  if (/[0-9]/.test(c)) return 0.55;
+  return 0.5;
+};
+
 export const approxMeasure: Measure = {
-  text: (t, fs, font) => ({ width: [...t].length * fs * (font === 'note' ? 0.56 : 0.5), height: fs * 1.2 }),
+  text: (t, fs, font) => ({
+    width: font === 'note' ? [...t].reduce((w, c) => w + noteEm(c), 0) * fs : [...t].length * fs * 0.5,
+    height: fs * 1.2,
+  }),
   tex: (t, fs) => {
     const visible = t.replace(/\\[a-zA-Z]+/g, 'x').replace(/[{}^_\\]/g, '');
     return { width: Math.max(1, [...visible].length) * fs * 0.55, height: fs * 1.4 };

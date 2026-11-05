@@ -165,3 +165,30 @@ describe('3D bad input', () => {
     expect(msg(f)).toMatch(re);
   });
 });
+
+describe('region edges are cut exactly', () => {
+  // Boundary edges of the triangle mesh (used by one triangle) must all lie on the circle x² + y² = 4,
+  // at a coarse mesh too — no notches where whole triangles were dropped.
+  it.each([8, 16, 40])('paraboloid over the disk, mesh %d', (mesh) => {
+    const fig = load('figures/24-paraboloid-contours.json');
+    fig.elements[0].mesh = mesh;
+    const s = sceneOf(fig);
+    const m = s.meshes[0]!;
+    const P = verts(m.positions).map((p) => fromBox(s, p));
+    const uses = new Map<string, number>();
+    for (let t = 0; t < m.indices.length; t += 3) {
+      const tri = [m.indices[t]!, m.indices[t + 1]!, m.indices[t + 2]!];
+      for (let e = 0; e < 3; e++) {
+        const [a, b] = [tri[e]!, tri[(e + 1) % 3]!].sort((p, q) => p - q);
+        uses.set(`${a},${b}`, (uses.get(`${a},${b}`) ?? 0) + 1);
+      }
+    }
+    const boundary = [...uses].filter(([, c]) => c === 1).flatMap(([k]) => k.split(',').map(Number));
+    expect(boundary.length).toBeGreaterThan(0);
+    for (const v of boundary) {
+      const [x, y] = P[v]!;
+      expect(Math.abs(x * x + y * y - 4)).toBeLessThan(1e-9);
+    }
+    for (const [x, y] of P) expect(x * x + y * y).toBeLessThanOrEqual(4 + 1e-9);
+  });
+});

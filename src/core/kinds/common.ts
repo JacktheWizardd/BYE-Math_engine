@@ -137,3 +137,51 @@ export function arrowHead(x: number, y: number, dx: number, dy: number, size = 7
     [bx + uy * half, by - ux * half],
   ];
 }
+
+export interface FittedText {
+  size: number;
+  lines: string[];
+}
+
+/**
+ * Fits a label into `maxWidth`: at most `maxLines` lines (wrapped at spaces), shrinking
+ * from `size` down to `minSize`; if it still doesn't fit, the last line ends in "…".
+ */
+export function fitText(text: string, maxWidth: number, size: number, minSize: number, measure: Measure, font: FontKind, maxLines = 2): FittedText {
+  const width = (t: string, fs: number) => measure.text(t, fs, font).width;
+  const wrap = (fs: number): string[] | null => {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      if (width(w, fs) > maxWidth) return null; // a single word too wide at this size
+      const next = cur ? `${cur} ${w}` : w;
+      if (width(next, fs) <= maxWidth) cur = next;
+      else {
+        lines.push(cur);
+        cur = w;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.length <= maxLines ? lines : null;
+  };
+  for (let fs = size; fs >= minSize - 1e-9; fs -= 0.5) {
+    const lines = wrap(fs);
+    if (lines) return { size: fs, lines };
+  }
+  // Still too long at the smallest size: fill the lines character by character and end with "…".
+  const lines: string[] = [];
+  let rest = text.trim();
+  for (let l = 0; l < maxLines && rest; l++) {
+    const last = l === maxLines - 1;
+    let n = rest.length;
+    while (n > 1 && width(rest.slice(0, n).trimEnd() + (last && n < rest.length ? '…' : ''), minSize) > maxWidth) n--;
+    if (!last) {
+      const space = rest.slice(0, n).lastIndexOf(' ');
+      if (space > 0 && n < rest.length) n = space;
+    }
+    lines.push(rest.slice(0, n).trimEnd() + (last && n < rest.length ? '…' : ''));
+    rest = rest.slice(n).trimStart();
+  }
+  return { size: minSize, lines };
+}

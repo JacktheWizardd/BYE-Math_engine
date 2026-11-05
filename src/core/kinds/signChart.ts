@@ -6,9 +6,11 @@ import type { PrimAnim, SceneOptions, SceneResult } from '../layout.ts';
 import { analyzeSign, SignError, type SignAnalysis } from '../sign.ts';
 import { arrowHead, constValue, exprMessage, finishLabels, makeContext, queueLabel, resolveAnim } from './common.ts';
 
-const HEADER_H = 32;
+const HEADER_ROW = 32;
+const HEADER_TIER = 23;
 const ROW_H = 34;
-const MAX_POINTS = 8;
+/** Beyond this the columns get too narrow to read on a phone, whatever the device can draw. */
+const MAX_POINTS = 12;
 
 interface Row {
   path: string;
@@ -77,8 +79,8 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
   if (errors.length) return { ok: false, errors };
 
   // --- geometry
-  const ctx = makeContext(opts, 1, undefined, HEADER_H + rows.length * ROW_H + 2);
-  const { width: W, height: H, theme, prims, measure } = ctx;
+  const ctx = makeContext(opts, 1, undefined, 1);
+  const { width: W, theme, prims, measure } = ctx;
   const size = Math.max(theme.fontSize.min, theme.fontSize.label);
   // Heading column: at most a third of the width; wider headings are drawn smaller (down to the minimum size).
   const maxLeft = W / 3;
@@ -92,6 +94,25 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
   const cols = xs.length + 1;
   const colW = (right - left) / cols;
   const bx = (k: number) => left + (k + 1) * colW; // x of critical point k
+
+  // Header values: one size for all, as large as fits the column. If they still don't fit side by side,
+  // stagger them on two rows (each then has two columns of room); ±∞ go on the row their neighbour doesn't use.
+  const headTex = xs.map((x) => marks.get(x) ?? formatValue(x).tex);
+  const infW = Math.max(measure.tex('-\\infty', size).width, measure.tex('+\\infty', size).width);
+  const fitSize = (room: number) =>
+    Math.min(size, ...headTex.map((t) => {
+      const w = measure.tex(t, size).width;
+      return w > room ? Math.max(theme.fontSize.min, (size * room) / w) : size;
+    }));
+  let headSize = fitSize(colW * 0.92);
+  const widest = Math.max(0, ...headTex.map((t) => measure.tex(t, headSize).width));
+  const infClash = xs.length > 0 && (4 + infW > colW - measure.tex(headTex[0]!, headSize).width / 2 - 3 || infW > colW - measure.tex(headTex[xs.length - 1]!, headSize).width / 2 - 3);
+  const twoTiers = widest > colW * 0.92 || infClash;
+  if (twoTiers) headSize = fitSize(colW * 1.84);
+  const HEADER_H = twoTiers ? HEADER_ROW + HEADER_TIER : HEADER_ROW;
+  const tierY = (tier: number) => (twoTiers ? 15 + tier * HEADER_TIER : HEADER_ROW / 2);
+  ctx.height = HEADER_H + rows.length * ROW_H + 2;
+  const H = ctx.height;
   const rowY = (r: number) => HEADER_H + r * ROW_H; // top of row r
 
   const anim = resolveAnim(fig.animate, 'fade', ['fade'], '', errors, 'a sign chart');
@@ -108,10 +129,25 @@ export function signChartScene(fig: SignChartFigure, opts: SceneOptions): SceneR
 
   // header: variable, −∞, critical values, +∞
   const cell = (cx: number, cy: number) => (w: number, h: number) => [{ x: cx - w / 2, y: cy - h / 2, width: w, height: h }];
+  const tierOf = (k: number) => (twoTiers ? k % 2 : 0);
+  // ±∞ go on the row where their nearest neighbour leaves the most room.
+  const room = (side: 'left' | 'right', tier: number) => {
+    const ks = xs.map((_, k) => k).filter((k) => tierOf(k) === tier);
+    if (!ks.length) return Infinity;
+    const k = side === 'left' ? ks[0]! : ks[ks.length - 1]!;
+    const w = measure.tex(headTex[k]!, headSize).width;
+    return side === 'left' ? bx(k) - w / 2 - (left + 4 + infW) : right - infW - (bx(k) + w / 2);
+  };
+  const minfTier = twoTiers && room('left', 1) > room('left', 0) ? 1 : 0;
+  const pinfTier = twoTiers && room('right', 1) > room('right', 0) ? 1 : 0;
+  /** ±∞ shrink (down to the minimum size) when their neighbour leaves less room than they need. */
+  const infSize = (r: number) => (r >= 3 ? headSize : Math.max(theme.fontSize.min, (headSize * Math.max(1, infW + r - 3)) / infW));
+  const minfSize = infSize(room('left', minfTier));
+  const pinfSize = infSize(room('right', pinfTier));
   queueLabel(ctx, 'head-var', { text: v }, 'text', cell(left / 2, HEADER_H / 2), { font: 'mathItalic' });
-  queueLabel(ctx, 'head-minf', { tex: '-\\infty' }, 'text', (w, h) => [{ x: left + 4, y: HEADER_H / 2 - h / 2, width: w, height: h }]);
-  queueLabel(ctx, 'head-pinf', { tex: '+\\infty' }, 'text', (w, h) => [{ x: right - w, y: HEADER_H / 2 - h / 2, width: w, height: h }]);
-  xs.forEach((x, k) => queueLabel(ctx, `head-${k}`, { tex: marks.get(x) ?? formatValue(x).tex }, 'text', cell(bx(k), HEADER_H / 2)));
+  queueLabel(ctx, 'head-minf', { tex: '-\\infty' }, 'text', (w, h) => [{ x: left + 4, y: tierY(minfTier) - h / 2, width: w, height: h }], { size: minfSize });
+  queueLabel(ctx, 'head-pinf', { tex: '+\\infty' }, 'text', (w, h) => [{ x: right - w, y: tierY(pinfTier) - h / 2, width: w, height: h }], { size: pinfSize });
+  xs.forEach((_, k) => queueLabel(ctx, `head-${k}`, { tex: headTex[k]! }, 'text', cell(bx(k), tierY(tierOf(k))), { size: headSize }));
 
   // rows
   rows.forEach((row, r) => {

@@ -1,0 +1,32 @@
+{
+  "spec": 0,
+  "kind": "chart",
+  "type": "bar",
+  "title": "Favourite snack",
+  "axes": {
+    "y": "Students"
+  },
+  "bars": [
+    {
+      "label": "Strawberry milkshake",
+      "value": 7
+    },
+    {
+      "label": "Chocolate chip cookies",
+      "value": 9
+    },
+    {
+      "label": "Apple",
+      "value": 4
+    },
+    {
+      "label": "Mango lassi",
+      "value": 5
+    },
+    {
+      "label": "Green tea ice cream",
+      "value": 6
+    }
+  ],
+  "describe": "Bar chart of favourite snacks: strawberry milkshake 7, chocolate chip cookies 9, apple 4, mango lassi 5, green tea ice cream 6."
+}

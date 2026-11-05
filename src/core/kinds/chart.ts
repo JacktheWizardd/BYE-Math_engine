@@ -4,7 +4,9 @@ import { clipLine } from '../scene.ts';
 import { boxStats, dotStacks, histogram, linearFit, niceBounds, type Bin } from '../stats.ts';
 import type { AnyRole } from '../theme.ts';
 import type { Rect } from '../view.ts';
-import { finishLabels, makeContext, queueLabel, resolveAnim, type KindContext, type ResolvedAnim } from './common.ts';
+import { finishLabels, fitText, makeContext, queueLabel, resolveAnim, type KindContext, type ResolvedAnim } from './common.ts';
+import { approxMeasure, type Measure } from '../layout.ts';
+import { ByeLightTheme } from '../theme.ts';
 
 /** Statistics charts: bar, histogram, box plot, dot plot, scatter (with optional least-squares line). */
 export function chartScene(fig: ChartFigure, opts: SceneOptions): SceneResult {
@@ -33,12 +35,14 @@ interface Frame {
 const tickSize = (ctx: KindContext) => Math.max(ctx.theme.fontSize.min, ctx.theme.fontSize.tick);
 
 /** Plot rectangle inside room for the title, axis titles, tick labels. */
-function makeFrame(fig: ChartFigure, opts: SceneOptions, defaultAspect: number, leftLabels: string[], bottomLabels: boolean, fixedHeight?: number): Frame {
+/** `bottomLines`: how many text lines the category / tick labels under the plot need (0 = none). */
+function makeFrame(fig: ChartFigure, opts: SceneOptions, defaultAspect: number, leftLabels: string[], bottomLines: boolean | number, fixedHeight?: number): Frame {
   const ctx = makeContext(opts, defaultAspect, fig.aspect, fixedHeight);
   const ts = tickSize(ctx);
   const leftW = Math.max(0, ...leftLabels.map((t) => ctx.measure.text(t, ts, 'note').width));
   const top = 8 + (fig.title ? 24 : 0) + (fig.axes?.y ? 18 : 0);
-  const bottom = 6 + (bottomLabels ? 18 : 0) + (fig.axes?.x ? 20 : 0);
+  const lines = bottomLines === true ? 1 : bottomLines === false ? 0 : bottomLines;
+  const bottom = 6 + lines * 16 + (lines ? 2 : 0) + (fig.axes?.x ? 20 : 0);
   const left = 8 + (leftW ? leftW + 6 : 0);
   const plot: Rect = { x: left, y: top, width: ctx.width - left - 12, height: ctx.height - top - bottom };
   const anim = resolveAnim(fig.animate, fig.type === 'bar' || fig.type === 'histogram' ? 'grow' : 'fade', ['grow', 'fade', 'draw'], '', ctx.errors, 'a chart');
@@ -116,7 +120,15 @@ function barChart(fig: BarChart, opts: SceneOptions): SceneResult {
   const [y0, niceHi, step] = niceBounds(lo, fig.max ?? hiRaw);
   const y1 = fig.max ?? niceHi;
   const yLabels = ticks(y0, y1, step).map(formatNumber);
-  const fr = makeFrame(fig, opts, 4 / 3, yLabels, true);
+  // Category labels: wrap to two lines and shrink to the minimum size if needed, so they never overlap.
+  const theme = opts.theme ?? ByeLightTheme;
+  const measure: Measure = { ...approxMeasure, ...opts.measure };
+  const ts = Math.max(theme.fontSize.min, theme.fontSize.tick);
+  const leftW = Math.max(0, ...yLabels.map((t) => measure.text(t, ts, 'note').width));
+  const slotEstimate = (opts.width - (8 + leftW + 6) - 12) / fig.bars.length;
+  const fitted = fig.bars.map((b) => fitText(b.label, slotEstimate * 0.94, ts, theme.fontSize.min, measure, 'note', 3));
+  const lineCount = Math.max(1, ...fitted.map((f) => f.lines.length));
+  const fr = makeFrame(fig, opts, 4 / 3, yLabels, lineCount);
   const { ctx, plot, anim } = fr;
   const yToPx = (v: number) => plot.y + plot.height - ((v - y0) / (y1 - y0)) * plot.height;
   yAxis(fr, [y0, y1, step], yToPx);
@@ -128,7 +140,11 @@ function barChart(fig: BarChart, opts: SceneOptions): SceneResult {
     const top = yToPx(b.value);
     const role = (b.role ?? 'f') as AnyRole;
     ctx.prims.push({ kind: 'polygon', key: `bar-${i}`, role, clip: false, points: rect(cx - half, base, cx + half, top), fillOpacity: 0.3, outline: true, ...withAnim(stagger(anim, i, 90, 'grow', base)) });
-    queueLabel(ctx, `bar-label-${i}`, { text: b.label }, 'note', (w, h) => [{ x: cx - w / 2, y: plot.y + plot.height + 5, width: w, height: h }], { font: 'note', size: tickSize(ctx) });
+    const f = fitted[i]!;
+    f.lines.forEach((line, li) => {
+      const lineH = f.size * 1.2;
+      queueLabel(ctx, li === 0 ? `bar-label-${i}` : `bar-label-${i}-${li}`, { text: line }, 'note', (w, h) => [{ x: cx - w / 2, y: plot.y + plot.height + 5 + li * lineH, width: w, height: h }], { font: 'note', size: f.size });
+    });
   });
   return finish(fr, fig.describe);
 }

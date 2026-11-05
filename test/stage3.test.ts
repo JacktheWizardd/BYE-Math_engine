@@ -126,7 +126,7 @@ describe('charts', () => {
 });
 
 describe('every Stage 3 figure', () => {
-  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => f >= '13' && f < '23');
+  const files = readdirSync(join(import.meta.dirname, '../examples/figures')).filter((f) => (f >= '13' && f < '23') || f.startsWith('31') || f.startsWith('32'));
   it.each(files)('%s: builds, labels inside, last frame = static', (file) => {
     const s = sceneOf(load(`figures/${file}`));
     for (const p of s.primitives) {
@@ -164,5 +164,67 @@ describe('Stage 3 bad input', () => {
     expect(errorsOf({ kind: 'chart', type: 'pie', describe: 'x' })).toMatch(/Unknown chart type "pie"/);
     expect(errorsOf({ kind: 'numberLine', range: [0, 1], elements: [{ type: 'segment' }], describe: 'x' })).toMatch(/Unknown element type "segment". Supported: inequality/);
     expect(errorsOf({ kind: 'signChart', describe: 'x' })).toMatch(/needs "f" or "rows"/);
+  });
+});
+
+describe('long bar-chart labels', () => {
+  const bars = ['Strawberry milkshake', 'Chocolate chip cookies', 'Apple', 'Supercalifragilisticexpialidocious', 'Mango lassi', 'Green tea ice cream'].map((label, i) => ({ label, value: i + 2 }));
+  const s = sceneOf({ kind: 'chart', type: 'bar', bars, describe: 'Favourite snacks with long names.' });
+  const labels = s.primitives.filter((p) => p.kind === 'text' && p.key.startsWith('bar-label-')) as Extract<Primitive, { kind: 'text' }>[];
+  const slot = (s.plot.width / bars.length) * 0.94 + 1e-6;
+
+  it('every line fits its slot, at no less than 11pt, in at most three lines', () => {
+    for (const p of labels) {
+      expect(p.box.width).toBeLessThanOrEqual(slot);
+      expect(p.fontSize).toBeGreaterThanOrEqual(11);
+    }
+    for (let i = 0; i < bars.length; i++) expect(labels.filter((p) => p.key === `bar-label-${i}` || p.key.startsWith(`bar-label-${i}-`)).length).toBeLessThanOrEqual(3);
+  });
+
+  it('labels never overlap', () => {
+    for (let a = 0; a < labels.length; a++) {
+      for (let b = a + 1; b < labels.length; b++) {
+        const A = labels[a]!.box, B = labels[b]!.box;
+        const overlap = Math.min(A.x + A.width, B.x + B.width) - Math.max(A.x, B.x) > 0.5 && Math.min(A.y + A.height, B.y + B.height) - Math.max(A.y, B.y) > 0.5;
+        expect(overlap, `${labels[a]!.text} / ${labels[b]!.text}`).toBe(false);
+      }
+    }
+  });
+
+  it('short labels stay on one line at full size; very long words end in …', () => {
+    const apple = labels.filter((p) => p.key.startsWith('bar-label-2'));
+    expect(apple.map((p) => p.text)).toEqual(['Apple']);
+    const long = labels.filter((p) => p.key === 'bar-label-3' || p.key.startsWith('bar-label-3-')).map((p) => p.text).join(' ');
+    expect(long).toMatch(/…$/);
+  });
+});
+
+describe('sign charts with many critical points', () => {
+  it('11 points (sin x on [−18, 18]): header values fit, never overlap, sit on their columns', () => {
+    const s = sceneOf({ kind: 'signChart', f: 'sin(x)', range: [-18, 18], describe: 'Sign of sin x.' });
+    const heads = s.primitives.filter((p) => p.kind === 'mathLabel' && p.key.startsWith('head-')) as Extract<Primitive, { kind: 'mathLabel' }>[];
+    expect(heads.filter((p) => /^head-\d+$/.test(p.key)).length).toBe(11);
+    for (const p of heads) {
+      expect(p.fontSize).toBeGreaterThanOrEqual(11);
+      expect(p.box.x).toBeGreaterThanOrEqual(-1e-9);
+      expect(p.box.x + p.box.width).toBeLessThanOrEqual(s.width + 1e-9);
+    }
+    for (let a = 0; a < heads.length; a++) {
+      for (let b = a + 1; b < heads.length; b++) {
+        const A = heads[a]!.box, B = heads[b]!.box;
+        const overlap = Math.min(A.x + A.width, B.x + B.width) - Math.max(A.x, B.x) > 0.5 && Math.min(A.y + A.height, B.y + B.height) - Math.max(A.y, B.y) > 0.5;
+        expect(overlap, `${heads[a]!.tex} / ${heads[b]!.tex}`).toBe(false);
+      }
+    }
+    for (let k = 0; k < 11; k++) {
+      const col = byKey(s, `col-${k}`);
+      const head = byKey(s, `head-${k}`);
+      if (col?.kind !== 'line' || head?.kind !== 'mathLabel') throw new Error();
+      expect(head.box.x + head.box.width / 2).toBeCloseTo(col.from[0], 6);
+    }
+  });
+
+  it('more than 12 asks for a narrower range', () => {
+    expect(errorsOf({ kind: 'signChart', f: 'sin(x)', range: [-20, 20], describe: 'x' })).toMatch(/13 critical points.*at most 12/);
   });
 });
