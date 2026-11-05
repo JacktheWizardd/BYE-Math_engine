@@ -1,0 +1,11 @@
+{
+  "spec": 0,
+  "kind": "signChart",
+  "f": "(x-1)(x+2)/(x-3)",
+  "factors": [
+    "x-1",
+    "x+2",
+    "x-3"
+  ],
+  "describe": "Sign chart of (x − 1)(x + 2)/(x − 3): zeros at −2 and 1, undefined at 3; negative on (−∞, −2), positive on (−2, 1), negative on (1, 3), positive on (3, ∞)."
+}

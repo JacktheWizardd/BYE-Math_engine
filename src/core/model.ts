@@ -14,7 +14,7 @@ import type {
   AnimationKind,
   Coord,
   Element,
-  Figure,
+  Plot2dFigure,
   FigureIssue,
   FunctionEl,
   IntersectionEl,
@@ -69,7 +69,7 @@ export type Item = ItemBase &
   );
 
 export interface FigureModel {
-  figure: Figure;
+  figure: Plot2dFigure;
   functions: Map<string, FnInfo>;
   /** Resolved coordinates of point-like elements (point, intersection) by id. */
   points: Map<string, Vec>;
@@ -91,7 +91,7 @@ const DEFAULT_DURATION = 700;
  * by their dependencies, computes tangents and intersections, and checks values
  * against the view. Never throws; returns every problem found.
  */
-export function compileFigure(figure: Figure): CompileResult {
+export function compileFigure(figure: Plot2dFigure): CompileResult {
   const errors: FigureIssue[] = [];
   const err = (path: string, message: string) => errors.push({ path, message });
   const at = (i: number, field?: string) => `elements[${i}]${field ? `.${field}` : ''}`;
@@ -283,6 +283,7 @@ export function compileFigure(figure: Figure): CompileResult {
       fill: el.type === 'region',
       move: el.type === 'point' && !!el.on,
       fade: true,
+      grow: false,
     };
     if (!allowed[kind]) {
       err(at(i, 'animate.kind'), `"${kind}" doesn't apply to a ${el.type}${kind === 'move' ? ' (only a point with "on" can move)' : ''}`);

@@ -66,7 +66,7 @@ function draw(p: Primitive, theme: ByeTheme, clip: string, mathBackend?: MathLab
         <Path
           d={pathOf(p.points)}
           stroke={style.color}
-          strokeWidth={style.strokeWidth}
+          strokeWidth={p.width ?? style.strokeWidth}
           strokeLinejoin="round"
           strokeLinecap="round"
           fill="none"
@@ -75,7 +75,18 @@ function draw(p: Primitive, theme: ByeTheme, clip: string, mathBackend?: MathLab
         />
       );
     case 'polygon':
-      return <Path d={pathOf(p.points, true)} fill={style.color} fillOpacity={style.fillOpacity ?? 0.16} stroke="none" clipPath={clipPath} opacity={opacity} />;
+      return (
+        <Path
+          d={pathOf(p.points, true)}
+          fill={style.color}
+          fillOpacity={p.fillOpacity ?? style.fillOpacity ?? 0.16}
+          stroke={p.outline ? style.color : 'none'}
+          strokeWidth={p.outline ? 1.25 : 0}
+          strokeLinejoin="round"
+          clipPath={clipPath}
+          opacity={opacity}
+        />
+      );
     case 'line': {
       const thin = p.role === 'grid' || p.role === 'axis';
       return (
@@ -85,8 +96,9 @@ function draw(p: Primitive, theme: ByeTheme, clip: string, mathBackend?: MathLab
           x2={n(p.to[0])}
           y2={n(p.to[1])}
           stroke={style.color}
-          strokeWidth={style.strokeWidth}
-          strokeLinecap={thin ? 'butt' : 'round'}
+          strokeWidth={p.width ?? style.strokeWidth}
+          strokeLinecap={thin || p.dash ? 'butt' : 'round'}
+          strokeDasharray={p.dash}
           clipPath={clipPath}
           opacity={opacity}
         />
@@ -98,9 +110,9 @@ function draw(p: Primitive, theme: ByeTheme, clip: string, mathBackend?: MathLab
           cx={n(p.center[0])}
           cy={n(p.center[1])}
           r={p.r}
-          fill={style.color}
-          stroke={theme.background}
-          strokeWidth={1.5}
+          fill={p.hollow ? theme.background : style.color}
+          stroke={p.hollow ? style.color : theme.background}
+          strokeWidth={p.hollow ? 2 : 1.5}
           opacity={opacity}
         />
       );

@@ -1,0 +1,21 @@
+{
+  "spec": 0,
+  "kind": "signChart",
+  "functions": {
+    "f": "x^3 - 3x"
+  },
+  "rows": [
+    {
+      "expr": "f'(x)",
+      "label": "f'(x)"
+    },
+    {
+      "expr": "f'(x)",
+      "show": "trend"
+    }
+  ],
+  "animate": {
+    "duration": 450
+  },
+  "describe": "First-derivative test for f(x) = x³ − 3x: f'(x) = 3x² − 3 is positive, then negative, then positive, so f has a local max at x = −1 and a local min at x = 1."
+}

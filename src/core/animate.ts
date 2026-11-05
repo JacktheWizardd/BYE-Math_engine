@@ -1,5 +1,5 @@
 import type { Rect } from './view.ts';
-import type { PrimAnim, Primitive, Pt, Scene } from './scene.ts';
+import type { PrimAnim, Primitive, Pt, Scene } from './layout.ts';
 
 /**
  * Pure animation timeline. The renderer asks for `frameAt(scene, ms)` on each
@@ -83,6 +83,11 @@ function partial(p: Primitive, a: Exclude<PrimAnim, { kind: 'follow' }>, t: numb
     case 'move': {
       if (p.kind !== 'circle') return p;
       return { ...p, center: alongPath(a.path, t) };
+    }
+    case 'grow': {
+      if (t <= 0) return null;
+      if (p.kind !== 'polygon') return { ...p, opacity: t };
+      return { ...p, points: p.points.map(([x, y]) => [x, a.baseline + (y - a.baseline) * t] as Pt) };
     }
   }
 }

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { figureToScene, frameAt, timeline, toPx, validateFigure, type Primitive, type Scene } from '../src/core/index.ts';
+import { figureToScene, frameAt, timeline, toPx, validatePlot2d, type Primitive, type Scene } from '../src/core/index.ts';
 
 const load = (path: string) => JSON.parse(readFileSync(join(import.meta.dirname, `../examples/${path}`), 'utf8'));
 const W = 338;
@@ -11,7 +11,7 @@ const sceneOf = (fig: unknown): Scene => {
   return r.scene;
 };
 const modelOf = (fig: unknown) => {
-  const r = validateFigure(fig);
+  const r = validatePlot2d(fig);
   if (!r.ok) throw new Error(JSON.stringify(r.errors));
   return r.model;
 };

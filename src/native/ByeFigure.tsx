@@ -98,7 +98,10 @@ export function ByeFigure({
     if (w > 0 && w !== measured) setMeasured(w);
   };
 
-  const aspect = (figure as { aspect?: number } | null)?.aspect ?? DEFAULT_ASPECT;
+  // Space reserved before the first layout: the figure's own aspect, else its kind's usual shape.
+  const kindAspect: Record<string, number> = { numberLine: 3.3, signChart: 2.4, chart: 4 / 3 };
+  const f = figure as { aspect?: number; kind?: string } | null;
+  const aspect = f?.aspect ?? kindAspect[f?.kind ?? ''] ?? DEFAULT_ASPECT;
   const containerStyle: StyleProp<ViewStyle> = [fixedWidth ? { width: fixedWidth } : { alignSelf: 'stretch' }, style];
 
   if (!result) {

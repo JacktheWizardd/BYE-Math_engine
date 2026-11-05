@@ -1,0 +1,9 @@
+{
+  "spec": 0,
+  "kind": "numberLine",
+  "range": [-5, 5],
+  "elements": [
+    { "type": "inequality", "expr": "x^2 - 4 > 0", "label": { "tex": "x^2 - 4 > 0" }, "animate": { "duration": 800 } }
+  ],
+  "describe": "Solution of x² − 4 > 0 on a number line: x < −2 or x > 2, with open dots at −2 and 2."
+}

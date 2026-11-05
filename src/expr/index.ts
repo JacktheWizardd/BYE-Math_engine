@@ -8,6 +8,7 @@ export type { Node, RawNode, BinOp } from './ast.ts';
 export { ExprError } from './errors.ts';
 export { compile, type Fn1, type FunctionTable, type PointTable } from './compile.ts';
 export { resolve, referencedIds, referencedFunctions, type Scope } from './resolve.ts';
+export { toTex } from './tex.ts';
 export { derive, NoSymbolicDerivative, numericDerivative, dependsOnX, simplify } from './derive.ts';
 export { BUILTIN_FUNCTIONS, BUILTIN_CONSTANTS, isReservedName } from './builtins.ts';
 

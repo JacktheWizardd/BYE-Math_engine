@@ -28,7 +28,7 @@ Entry points:
 |---|---|---|
 | `bye-math-engine/spec` | zod schema, TS types, `validateSpec`, `figureJsonSchema()` | no |
 | `bye-math-engine/expr` | expression parser / compiler | no |
-| `bye-math-engine/core` | `validateFigure`, `figureToScene`, `timeline`/`frameAt`, sampling, solvers, theme | no |
+| `bye-math-engine/core` | `validateFigure`, `figureToScene`, `timeline`/`frameAt`, sampling, solvers, `solveInequality`, `analyzeSign`, statistics, theme | no |
 | `bye-math-engine/native` | `<ByeFigure>`, `SceneSvg`, `MathLabel`, `rafDriver`, `useReducedMotion` | yes |
 
 ## Figure description (spec 0)
@@ -64,6 +64,31 @@ Entry points:
 Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`, `text`), `label` (`text` or `tex`, plus `at`: an x value for curves/lines, or `center`, `above`, `below`, `left`, `right`, `start`, `end`) and `animate`. Coordinates may be numbers or expressions (`"f(1)"`, `"pi/2"`, `"P.x"`). Any position (`from`, `to`, `at`, `point`, `through`) may also be the id of a point or intersection: `"to": "B"`. Elements may refer to ones defined later; circular definitions are errors. Examples: [examples/figures](examples/figures).
 
 `animate`: `true`, or `{ "kind", "duration" (ms, 700), "delay" (ms, 0), "from" }`. Default kind by element: `draw` (function, line, tangent, segment), `fill` (region, sweeps left to right), `move` (point with `on`, glides along the curve from `from`), `fade` (everything else). An element's label fades in when it finishes; a moving point's label rides along. Use `delay` to sequence steps.
+
+### Other figure kinds
+
+`"kind"` picks the figure type. Everything else (theme, labels, `animate`, validation, error box, `ByeFigure`) works the same.
+
+**Number line** — `{ "kind": "numberLine", "range": [-4, 5], "ticks"?, "tickLabels"?, "variable"?: "x", "elements": [...] }`
+
+| type | fields |
+|---|---|
+| `inequality` | `expr`: `"-1 < x <= 3"`, `"x < 0 or x >= 2"`, `"x^2 - 4 > 0"`, `"(x-1)/(x+2) >= 0"`, `"x != 1"`, `"x = 2"` (also `≤ ≥ ≠`, `and`) — solved exactly, drawn with open/filled dots and arrows where it runs off the line |
+| `interval` | `from`, `to` (omit for unbounded), `closed`: [bool, bool] |
+| `point` | `at`, `open` |
+| `text` / `mathLabel` | `at`, `text` / `tex`, `side`: `above` \| `below` |
+
+**Sign chart** — `{ "kind": "signChart", "f": "(x-1)(x+2)/(x-3)", "factors"?: ["x-1", "x+2", "x-3"] }`, or `"rows"` for full control: `{ "expr": "f'(x)", "show": "sign" | "trend", "label"?: tex }` with `"functions": { "f": "x^3 - 3x" }`. Zeros, undefined points and signs are computed; trend rows draw ↗/↘ and mark max/min. `"marks": [{ "x": "sqrt(2)", "tex": "\\sqrt{2}" }]` controls how a point is written; `"range"` limits the search (default ±50, at most 8 critical points).
+
+**Chart** — `{ "kind": "chart", "type": …, "title"?, "axes"?: { "x"?, "y"? }, "animate"? }`
+
+| type | fields |
+|---|---|
+| `bar` | `bars`: [{ `label`, `value`, `role`? }], `max`? |
+| `histogram` | `data` + `bins`: count, `{ width, start? }` or `{ edges }`; or ready-made `bins`: [{ `from`, `to`, `count` }]. Bins are [a, b), the last one closed |
+| `box` | `groups`: [{ `label`?, `data` }], `quartiles`: `exclusive` (default) \| `inclusive`; outliers beyond 1.5·IQR |
+| `dot` | `data`, `step`? |
+| `scatter` | `points`: [[x, y], …], `fit`: `linear` (least squares, equation and r shown) |
 
 ### Expressions
 

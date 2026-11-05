@@ -1,0 +1,31 @@
+{
+  "spec": 0,
+  "kind": "chart",
+  "type": "bar",
+  "title": "Favourite fruit",
+  "axes": {
+    "y": "Students"
+  },
+  "bars": [
+    {
+      "label": "Apple",
+      "value": 8
+    },
+    {
+      "label": "Banana",
+      "value": 5
+    },
+    {
+      "label": "Cherry",
+      "value": 3
+    },
+    {
+      "label": "Grape",
+      "value": 6
+    }
+  ],
+  "animate": {
+    "duration": 500
+  },
+  "describe": "Bar chart of favourite fruit: apple 8 students, banana 5, cherry 3, grape 6."
+}

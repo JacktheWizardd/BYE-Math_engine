@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { compileExpr } from '../src/expr';
-import { figureToScene, integrate, toPx, validateFigure, type Polyline, type Scene } from '../src/core';
+import { figureToScene, integrate, toPx, validatePlot2d, type Polyline, type Scene } from '../src/core';
 
 const load = (path: string) => JSON.parse(readFileSync(join(import.meta.dirname, `../examples/${path}`), 'utf8'));
 const reference = load('figures/01-reference-area.json');
@@ -61,14 +61,14 @@ describe('§9 exactness: reference figure', () => {
   });
 
   it('point on: f, x: 3 resolves to (3, 7)', () => {
-    const r = validateFigure({ ...reference, elements: [...reference.elements, { type: 'point', on: 'f', x: 3 }] });
+    const r = validatePlot2d({ ...reference, elements: [...reference.elements, { type: 'point', on: 'f', x: 3 }] });
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     const point = r.model.items.find((i) => i.type === 'point');
     expect(point?.type === 'point' && point.at).toEqual([3, 7]);
   });
 
   it('segment coordinate "f(1)" resolves to 3', () => {
-    const r = validateFigure(reference);
+    const r = validatePlot2d(reference);
     if (!r.ok) throw new Error();
     const seg = r.model.items.find((i) => i.type === 'segment');
     expect(seg?.type === 'segment' && seg.to).toEqual([1, 3]);

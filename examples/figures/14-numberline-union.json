@@ -1,0 +1,27 @@
+{
+  "spec": 0,
+  "kind": "numberLine",
+  "range": [
+    -3,
+    5
+  ],
+  "elements": [
+    {
+      "type": "inequality",
+      "expr": "x < 0 or x >= 2",
+      "label": {
+        "tex": "x < 0 \\;\\text{or}\\; x \\ge 2"
+      }
+    },
+    {
+      "type": "point",
+      "at": 1,
+      "open": true,
+      "role": "note",
+      "label": {
+        "text": "not 1"
+      }
+    }
+  ],
+  "describe": "Number line showing x < 0 or x ≥ 2: shaded to the left of an open dot at 0 and to the right of a filled dot at 2."
+}

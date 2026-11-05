@@ -1,0 +1,54 @@
+{
+  "spec": 0,
+  "kind": "chart",
+  "type": "scatter",
+  "axes": {
+    "x": "Hours studied",
+    "y": "Score"
+  },
+  "points": [
+    [
+      1,
+      58
+    ],
+    [
+      2,
+      62
+    ],
+    [
+      2.5,
+      65
+    ],
+    [
+      3,
+      70
+    ],
+    [
+      4,
+      71
+    ],
+    [
+      4.5,
+      78
+    ],
+    [
+      5,
+      80
+    ],
+    [
+      6,
+      83
+    ],
+    [
+      7,
+      88
+    ],
+    [
+      8,
+      93
+    ]
+  ],
+  "fit": "linear",
+  "animate": true,
+  "describe": "Scatter plot of score against hours studied for 10 students, with a line of best fit rising about 5 points per hour."
+}

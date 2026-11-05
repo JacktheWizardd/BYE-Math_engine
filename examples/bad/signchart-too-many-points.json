@@ -1,0 +1,5 @@
+{
+  "kind": "signChart",
+  "f": "sin(x)",
+  "describe": "Sign of sin x over a huge range."
+}

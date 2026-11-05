@@ -4,7 +4,16 @@
     {
       "name": "gallery-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "example", "run", "web", "--", "--port", "8081"],
+      "runtimeArgs": [
+        "--prefix",
+        "example",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8081",
+        "--clear"
+      ],
       "port": 8081
     }
   ]

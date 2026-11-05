@@ -1,0 +1,9 @@
+{
+  "spec": 0,
+  "kind": "numberLine",
+  "range": [-4, 5],
+  "elements": [
+    { "type": "inequality", "expr": "-1 < x <= 3", "label": { "tex": "-1 < x \\le 3" } }
+  ],
+  "describe": "Number line showing −1 < x ≤ 3: an open dot at −1, a filled dot at 3, shaded between."
+}

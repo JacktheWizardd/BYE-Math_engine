@@ -5,7 +5,7 @@ import { STIXTwoText_400Regular, STIXTwoText_400Regular_Italic } from '@expo-goo
 import { ZenKakuGothicNew_400Regular } from '@expo-google-fonts/zen-kaku-gothic-new';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ByeFigure } from 'bye-math-engine/native';
-import { badInputs, gallery, stage2 } from './figures';
+import { badInputs, gallery, stage2, stage3 } from './figures';
 
 const ink = '#1e1c19';
 const ink2 = '#5a554d';
@@ -33,7 +33,7 @@ export default function App() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.h1}>BYE Math Engine</Text>
-        <Text style={styles.sub}>Gallery · Stage 2 (dependencies and motion)</Text>
+        <Text style={styles.sub}>Gallery · Stage 3 (number lines, sign charts, statistics)</Text>
 
         <View style={styles.controls}>
           <Pressable onPress={() => setReplayKey((k) => k + 1)} style={styles.button} accessibilityRole="button" testID="replay">
@@ -50,6 +50,11 @@ export default function App() {
           </Pressable>
         </View>
 
+        {stage3.map(({ title, figure }) => (
+          <Card key={title} title={title} figure={figure} replayKey={replayKey} reduceMotion={reduceMotion} />
+        ))}
+
+        <Text style={[styles.h1, styles.section]}>Stage 2</Text>
         {stage2.map(({ title, figure }) => (
           <Card key={title} title={title} figure={figure} replayKey={replayKey} reduceMotion={reduceMotion} />
         ))}

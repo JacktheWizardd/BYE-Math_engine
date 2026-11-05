@@ -1,0 +1,11 @@
+{
+  "kind": "chart",
+  "type": "box",
+  "groups": [
+    {
+      "label": "A",
+      "data": []
+    }
+  ],
+  "describe": "Box plot with an empty group."
+}

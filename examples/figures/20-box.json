@@ -1,0 +1,42 @@
+{
+  "spec": 0,
+  "kind": "chart",
+  "type": "box",
+  "axes": {
+    "x": "Score"
+  },
+  "groups": [
+    {
+      "label": "Class A",
+      "data": [
+        62,
+        68,
+        71,
+        74,
+        75,
+        77,
+        79,
+        81,
+        84,
+        88,
+        91
+      ]
+    },
+    {
+      "label": "Class B",
+      "data": [
+        55,
+        60,
+        64,
+        70,
+        72,
+        73,
+        75,
+        78,
+        80,
+        112
+      ]
+    }
+  ],
+  "describe": "Box plots of two classes' scores. Class A: median 77, quartiles 71 and 84. Class B: median 72.5, quartiles 64 and 78, with an outlier at 112."
+}

@@ -63,7 +63,8 @@ export function dependsOnX(n: Node): boolean {
     case 'member':
       return false;
     case 'var':
-      return n.name === 'x';
+      // An expression has at most one free variable (x, or the sign chart's / number line's variable).
+      return true;
     case 'neg':
       return dependsOnX(n.arg);
     case 'bin':
@@ -85,7 +86,7 @@ export function derive(n: Node): Node {
     case 'member':
       return num(0);
     case 'var':
-      return num(n.name === 'x' ? 1 : 0);
+      return num(1);
     case 'neg':
       return neg(derive(n.arg));
     case 'bin': {
