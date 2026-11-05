@@ -1,0 +1,1 @@
+{ "kind": "plot2d", "view": { "x": [-3, 3], "y": [-1, 9] }, "elements": [ { "id": "f", "type": "function", "y": "x^2 + 1" }, { "type": "intersection", "of": ["f"] } ], "describe": "Roots of x² + 1." }

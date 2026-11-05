@@ -1,6 +1,6 @@
 import { validateSpec, type FigureIssue, type Label, type LabelPosition } from '../spec/index.ts';
 import { boxAt, boxBeside, centeredBox, placeLabels, type Anchor, type LabelRequest, type Obstacles } from './labels.ts';
-import { compileFigure, type FigureModel, type FnInfo, type Item } from './model.ts';
+import { compileFigure, type FigureModel, type FnInfo, type Item, type ItemAnim } from './model.ts';
 import { sampleFunction, slice, type Polyline } from './sample.ts';
 import { ByeLightTheme, type AnyRole, type ByeTheme } from './theme.ts';
 import { DEFAULT_ASPECT, plotRect, toPx, type Padding, type Rect, type Vec, type Viewport } from './view.ts';
@@ -28,7 +28,28 @@ interface Common {
   role: AnyRole;
   /** Draw inside the plot-area clip (curves, regions) or not (axes, labels). */
   clip: boolean;
+  /** How this primitive animates in (see animate.ts). Absent = static. */
+  anim?: PrimAnim;
+  /** 0..1, set on animation frames while fading in. */
+  opacity?: number;
 }
+
+/**
+ * Animation data carried by a primitive. Times in ms from when the figure appears.
+ * - draw: a stroke grows; `span` is this piece's share of its element's timeline (curves with gaps draw piece by piece).
+ * - fill: a region sweeps left to right; `top`/`bottom` are its edges in px, left to right.
+ * - move: a point glides along `path` (px), ending at its final position.
+ * - fade: opacity 0 → 1.
+ * - follow: a label that moves with the point `target` (keeps its final offset).
+ */
+export type PrimAnim =
+  | { kind: 'draw'; delay: number; duration: number; span: [number, number] }
+  | { kind: 'fill'; delay: number; duration: number; top: Pt[]; bottom: Pt[] }
+  | { kind: 'move'; delay: number; duration: number; path: Pt[] }
+  | { kind: 'fade'; delay: number; duration: number }
+  | { kind: 'follow'; target: string };
+
+const LABEL_FADE_MS = 250;
 
 export type Primitive =
   | (Common & { kind: 'polyline'; points: Pt[] })
@@ -135,6 +156,20 @@ function layout(
   const [y0, y1] = figure.view.y;
   const fs = (n: number) => Math.max(theme.fontSize.min, n);
 
+  // --- animation helpers
+  const labelAnims = new Map<string, PrimAnim>();
+  const strokeAnim = (a: ItemAnim, span: [number, number]): PrimAnim =>
+    a.kind === 'draw' ? { kind: 'draw', delay: a.delay, duration: a.duration, span } : { kind: 'fade', delay: a.delay, duration: a.duration };
+  /** An element's label fades in once the element has finished, or rides along with a moving point. */
+  function setLabelAnim(item: Item, movingKey?: string) {
+    const a = item.anim;
+    if (!a || !item.el.label) return;
+    const key = `label-${item.index}`;
+    if (movingKey) labelAnims.set(key, { kind: 'follow', target: movingKey });
+    else if (a.kind === 'fade') labelAnims.set(key, { kind: 'fade', delay: a.delay, duration: a.duration });
+    else labelAnims.set(key, { kind: 'fade', delay: a.delay + a.duration, duration: LABEL_FADE_MS });
+  }
+
   // --- grid
   if (figure.grid) {
     const { x: gx, y: gy } = figure.grid;
@@ -168,7 +203,16 @@ function layout(
     }
     const math: Polyline = bottom ? [...top, ...[...bottom].reverse()] : [[item.from, 0], ...top, [item.to, 0]];
     const points = math.map((p) => px(p));
-    prims.push({ kind: 'polygon', key: `el-${item.index}`, role: item.el.role, clip: true, points });
+    const region: Primitive = { kind: 'polygon', key: `el-${item.index}`, role: item.el.role, clip: true, points };
+    if (item.anim) {
+      const { delay, duration } = item.anim;
+      region.anim =
+        item.anim.kind === 'fill'
+          ? { kind: 'fill', delay, duration, top: top.map((p) => px(p)), bottom: (bottom ?? [[item.from, 0], [item.to, 0]]).map((p) => px(p)) }
+          : { kind: 'fade', delay, duration };
+      setLabelAnim(item);
+    }
+    prims.push(region);
     if (item.el.label) {
       const c = centroid(points);
       const topMid = px([(item.from + item.to) / 2, item.top.fn((item.from + item.to) / 2)]);
@@ -230,11 +274,19 @@ function layout(
     switch (item.type) {
       case 'function': {
         const runs = runsOf.get(item.fn) ?? [];
-        runs.forEach((r, k) => {
-          const points = r.map((p) => px(p));
-          prims.push({ kind: 'polyline', key: `${key}-${k}`, role: item.el.role, clip: true, points });
+        const pieces = runs.map((r) => r.map((p) => px(p)));
+        const lengths = pieces.map(polylineLength);
+        const total = lengths.reduce((a, b) => a + b, 0) || 1;
+        let done = 0;
+        pieces.forEach((points, k) => {
+          const prim: Primitive = { kind: 'polyline', key: `${key}-${k}`, role: item.el.role, clip: true, points };
+          const span: [number, number] = [done / total, (done + lengths[k]!) / total];
+          done += lengths[k]!;
+          if (item.anim) prim.anim = strokeAnim(item.anim, span);
+          prims.push(prim);
           obstacles.strokes.push(points);
         });
+        setLabelAnim(item);
         if (item.el.label) functionLabel(item, runs);
         return;
       }
@@ -243,8 +295,9 @@ function layout(
       case 'segment': {
         const a = px(item.from);
         const b = px(item.to);
-        prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: b });
+        prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: b, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
         obstacles.strokes.push([a, b]);
+        setLabelAnim(item);
         if (item.el.label) segmentLabel(item.index, item.el.label, item.el.role, a, b);
         return;
       }
@@ -253,8 +306,9 @@ function layout(
         if (!seg) return;
         const a = px(seg[0]);
         const b = px(seg[1]);
-        prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: b });
+        prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: b, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
         obstacles.strokes.push([a, b]);
+        setLabelAnim(item);
         if (item.el.label) {
           const at = item.el.label.at;
           if (typeof at === 'number') {
@@ -267,7 +321,20 @@ function layout(
       }
       case 'point': {
         const c = px(item.at);
-        prims.push({ kind: 'circle', key, role: item.el.role, clip: false, center: c, r: theme.pointRadius });
+        const dot: Primitive = { kind: 'circle', key, role: item.el.role, clip: false, center: c, r: theme.pointRadius };
+        if (item.anim?.kind === 'move' && item.on && item.anim.from !== undefined) {
+          const from = item.anim.from;
+          const run = sliceOne(runsOf.get(item.on) ?? [], Math.min(from, item.at[0]), Math.max(from, item.at[0]));
+          if (!run) {
+            errors.push({ path: `elements[${item.index}].animate`, message: `the point can't move along "${item.on.id}" from x = ${from}: there's a gap in between` });
+          } else {
+            const path = run.map((p) => px(p));
+            if (from > item.at[0]) path.reverse();
+            dot.anim = { kind: 'move', delay: item.anim.delay, duration: item.anim.duration, path };
+          }
+        } else if (item.anim) dot.anim = { kind: 'fade', delay: item.anim.delay, duration: item.anim.duration };
+        prims.push(dot);
+        setLabelAnim(item, dot.anim?.kind === 'move' ? key : undefined);
         obstacles.points.push({ x: c[0], y: c[1], r: theme.pointRadius });
         if (item.el.label) pointLabel(item.index, item.el.label, item.el.role, c);
         return;
@@ -277,6 +344,7 @@ function layout(
         const font: FontKind = item.el.role === 'note' ? 'note' : 'math';
         const size = fs(item.el.role === 'note' ? theme.fontSize.note : theme.fontSize.label);
         const m = measure.text(item.el.text, size, font);
+        if (item.anim) labelAnims.set(key, { kind: 'fade', delay: item.anim.delay, duration: item.anim.duration });
         labels.push({
           req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height) },
           make: (box) => textPrim(key, item.el.role, item.el.text, font, size, box),
@@ -287,6 +355,7 @@ function layout(
         const c = px(item.at);
         const size = fs(theme.fontSize.label);
         const m = measure.tex(item.el.tex, size);
+        if (item.anim) labelAnims.set(key, { kind: 'fade', delay: item.anim.delay, duration: item.anim.duration });
         labels.push({
           req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height) },
           make: (box) => ({ kind: 'mathLabel', key, role: item.el.role, clip: false, box, tex: item.el.tex, fontSize: size }),
@@ -301,7 +370,9 @@ function layout(
     const f = item.fn.fn;
     const [ra, rb] = item.fn.range;
     let x: number;
-    if (typeof label.at === 'number') x = label.at;
+    const atY = typeof label.at === 'number' ? f(label.at) : NaN;
+    // An x whose point is off the view would put the label at the edge, away from its curve: fall back.
+    if (typeof label.at === 'number' && atY >= y0 && atY <= y1) x = label.at;
     else {
       // Default / "end": the right-most visible sample at or before 92% of the range; "start": left-most after 8%.
       const inView = runs.flat().filter(([, y]) => y >= y0 && y <= y1);
@@ -334,7 +405,7 @@ function layout(
         const q: Pt = [p[0] - t[0] * d, p[1] - t[1] * d];
         return [boxBeside(q[0], q[1], n[0], n[1], 6, w, h), boxBeside(q[0], q[1], -n[0], -n[1], 6, w, h)];
       }),
-    ]);
+    ], false);
   }
 
   function segmentLabel(index: number, label: Label, role: AnyRole, a: Pt, b: Pt) {
@@ -385,9 +456,19 @@ function layout(
     addLabel(index, label, role, (w, h) => all.map(([dx, dy]) => boxBeside(c[0], c[1], dx, dy, g, w, h)));
   }
 
-  function addLabel(index: number, label: Label, role: AnyRole, candidates: (w: number, h: number, pos?: LabelPosition) => Rect[]) {
+  /**
+   * `explicitAllowed`: keyword placements ("below") on segments, points and regions keep their side and
+   * grow the padding if needed; curve labels ("start", "end", an x value) just move to free space.
+   */
+  function addLabel(
+    index: number,
+    label: Label,
+    role: AnyRole,
+    candidates: (w: number, h: number, pos?: LabelPosition) => Rect[],
+    explicitAllowed = true,
+  ) {
     const key = `label-${index}`;
-    const explicit = typeof label.at === 'string' && label.at !== 'center';
+    const explicit = explicitAllowed && typeof label.at === 'string' && label.at !== 'center';
     if (label.tex !== undefined) {
       const size = fs(theme.fontSize.label);
       const m = measure.tex(label.tex, size);
@@ -419,7 +500,11 @@ function layout(
     obstacles,
     { clamp },
   );
-  placed.forEach((p, i) => prims.push(labels[i]!.make(p.box)));
+  placed.forEach((p, i) => {
+    const prim = labels[i]!.make(p.box);
+    const anim = labelAnims.get(prim.key);
+    prims.push(anim ? { ...prim, anim } : prim);
+  });
 
   // Points sit above lines; labels above everything.
   const rank = (p: Primitive) =>
@@ -431,6 +516,12 @@ function layout(
     overflow,
     scene: { width, height, plot, viewport: vp, primitives: prims, describe: figure.describe, samples, theme },
   };
+}
+
+function polylineLength(pts: Pt[]): number {
+  let l = 0;
+  for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1]);
+  return l;
 }
 
 function textPrim(key: string, role: AnyRole, text: string, font: FontKind, fontSize: number, box: Rect): Primitive {

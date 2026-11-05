@@ -1,0 +1,15 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-0.5, 2.5], "y": [-0.5, 4.5] },
+  "grid": { "x": 0.5, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": false },
+  "elements": [
+    { "id": "f", "type": "function", "y": "2x", "role": "f", "label": { "tex": "y = 2x", "at": 2.15 } },
+    { "id": "g", "type": "function", "y": "x^2", "role": "F", "label": { "tex": "y = x^2", "at": 1.5 } },
+    { "id": "A", "type": "intersection", "of": ["f", "g"], "index": 0, "label": { "text": "A", "at": "left" } },
+    { "id": "B", "type": "intersection", "of": ["f", "g"], "near": 2, "label": { "text": "B", "at": "left" } },
+    { "type": "segment", "from": ["B.x", 0], "to": "B", "role": "note", "label": { "tex": "x = 2", "at": "below" } }
+  ],
+  "describe": "y = 2x and y = x² meet at A = (0, 0) and B = (2, 4); a line drops from B to x = 2."
+}

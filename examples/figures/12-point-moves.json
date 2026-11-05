@@ -1,0 +1,12 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [0, 6.5], "y": [-1, 4.5] },
+  "grid": { "x": 1, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": false },
+  "elements": [
+    { "id": "f", "type": "function", "y": "sin(x) + x/2", "role": "f", "label": { "tex": "f(x) = \\sin x + \\tfrac{x}{2}", "at": "start" } },
+    { "id": "P", "type": "point", "on": "f", "x": 4.5, "role": "bound", "label": { "text": "P", "at": "above" }, "animate": { "from": 0.5, "duration": 1600 } }
+  ],
+  "describe": "Point P glides along f(x) = sin x + x/2 from x = 0.5 to x = 4.5."
+}

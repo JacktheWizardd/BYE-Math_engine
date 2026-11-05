@@ -2,15 +2,21 @@ import type { Node } from './ast.ts';
 import { BUILTIN_FUNCTIONS } from './builtins.ts';
 
 export type Fn1 = (x: number) => number;
-/** Looks up a function element by id at call time (so definition order doesn't matter). */
-export type FunctionTable = (id: string) => Fn1 | undefined;
+/**
+ * Looks up a function element by id at call time (so definition order doesn't matter).
+ * `order` is the derivative order: 0 for f, 1 for f', 2 for f''.
+ */
+export type FunctionTable = (id: string, order: number) => Fn1 | undefined;
+/** Looks up a point element's coordinates at call time. */
+export type PointTable = (id: string) => readonly [number, number] | undefined;
 
 /**
  * Compiles a resolved AST into a closure tree once, so sampling a curve at
  * thousands of points doesn't re-walk the AST. No eval / new Function.
  * Domain errors give NaN or ±Infinity rather than throwing; the sampler splits there.
  */
-export function compile(node: Node, functions: FunctionTable = () => undefined): Fn1 {
+export function compile(node: Node, functions: FunctionTable = () => undefined, points: PointTable = () => undefined): Fn1 {
+  const rec = (n: Node) => compile(n, functions, points);
   switch (node.type) {
     case 'num': {
       const v = node.value;
@@ -19,12 +25,12 @@ export function compile(node: Node, functions: FunctionTable = () => undefined):
     case 'var':
       return (x) => x;
     case 'neg': {
-      const a = compile(node.arg, functions);
+      const a = rec(node.arg);
       return (x) => -a(x);
     }
     case 'bin': {
-      const l = compile(node.left, functions);
-      const r = compile(node.right, functions);
+      const l = rec(node.left);
+      const r = rec(node.right);
       switch (node.op) {
         case '+':
           return (x) => l(x) + r(x);
@@ -40,7 +46,7 @@ export function compile(node: Node, functions: FunctionTable = () => undefined):
     }
     // eslint-disable-next-line no-fallthrough
     case 'call': {
-      const args = node.args.map((a) => compile(a, functions));
+      const args = node.args.map(rec);
       if (node.builtin) {
         const fn = BUILTIN_FUNCTIONS[node.fn]!.fn;
         if (args.length === 1) {
@@ -50,11 +56,17 @@ export function compile(node: Node, functions: FunctionTable = () => undefined):
         return (x) => fn(...args.map((a) => a(x)));
       }
       const id = node.fn;
+      const order = node.order;
       const a = args[0]!;
       return (x) => {
-        const f = functions(id);
+        const f = functions(id, order);
         return f ? f(a(x)) : NaN;
       };
+    }
+    case 'member': {
+      const { id, axis } = node;
+      const k = axis === 'x' ? 0 : 1;
+      return () => points(id)?.[k] ?? NaN;
     }
   }
 }

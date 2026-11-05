@@ -1,0 +1,13 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-1, 4], "y": [-2, 9] },
+  "grid": { "x": 1, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": false },
+  "elements": [
+    { "id": "f", "type": "function", "y": "x^2", "role": "f", "label": { "tex": "f(x) = x^2", "at": 2.8 } },
+    { "id": "T", "type": "tangent", "to": "f", "at": 2, "role": "bound", "label": { "tex": "y = 4x - 4", "at": 0.9 } },
+    { "id": "P", "type": "point", "on": "f", "x": 2, "role": "bound", "label": { "text": "P", "at": "left" } }
+  ],
+  "describe": "Parabola f(x) = x² with its tangent line at P = (2, 4); the tangent has slope 4: y = 4x − 4."
+}

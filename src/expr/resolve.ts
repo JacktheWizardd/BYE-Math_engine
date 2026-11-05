@@ -5,8 +5,12 @@ import { ExprError } from './errors.ts';
 export interface Scope {
   /** Free variables allowed in this expression, e.g. ['x'] for y = f(x); [] for a constant. */
   variables: readonly string[];
-  /** Ids of function elements that may be called, e.g. f in "f(1)". */
+  /** Ids of function elements that may be called, e.g. f in "f(1)" or "f'(2)". */
   functions: readonly string[];
+  /** Ids of point elements whose coordinates may be used, e.g. P in "P.x". */
+  points?: readonly string[];
+  /** Ids of other elements, only for clearer error messages ("s is a segment, not a point"). */
+  others?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -26,6 +30,7 @@ export function resolve(raw: RawNode, scope: Scope, source: string): Node {
     const c = BUILTIN_CONSTANTS[name];
     if (c !== undefined && Object.hasOwn(BUILTIN_CONSTANTS, name)) return { type: 'num', value: c };
     if (isCallable(name)) return fail(`"${name}" is a function; write ${name}(…)`, n);
+    if (scope.points?.includes(name)) return fail(`"${name}" is a point; write ${name}.x or ${name}.y`, n);
     if (name === 'x') return fail('x is not allowed here; this value must be a constant', n);
     if (name.length > 1 && /^[a-z]+$/i.test(name)) {
       const prefix = Object.keys(BUILTIN_FUNCTIONS).find((f) => name.startsWith(f) && name.length > f.length);
@@ -45,17 +50,27 @@ export function resolve(raw: RawNode, scope: Scope, source: string): Node {
         return { type: 'neg', arg: walk(n.arg) };
       case 'bin':
         return { type: 'bin', op: n.op, left: walk(n.left), right: walk(n.right) };
+      case 'member': {
+        if (scope.points?.includes(n.id)) return { type: 'member', id: n.id, axis: n.axis };
+        const kind = scope.others?.get(n.id) ?? (scope.functions.includes(n.id) ? 'function' : undefined);
+        return fail(kind ? `"${n.id}" is a ${kind}, not a point` : `No point with id "${n.id}"`, n);
+      }
       case 'apply': {
         const builtin = BUILTIN_FUNCTIONS[n.callee];
         if (builtin && Object.hasOwn(BUILTIN_FUNCTIONS, n.callee)) {
+          if (n.order > 0) fail(`Write the derivative of ${n.callee} out, or define it as a function element`, n);
           if (!builtin.arity.includes(n.args.length)) {
             fail(`${n.callee} takes ${builtin.arity.join(' or ')} argument(s), got ${n.args.length}`, n);
           }
-          return { type: 'call', fn: n.callee, builtin: true, args: n.args.map(walk) };
+          return { type: 'call', fn: n.callee, builtin: true, order: 0, args: n.args.map(walk) };
         }
         if (scope.functions.includes(n.callee)) {
           if (n.args.length !== 1) fail(`${n.callee} takes 1 argument, got ${n.args.length}`, n);
-          return { type: 'call', fn: n.callee, builtin: false, args: n.args.map(walk) };
+          return { type: 'call', fn: n.callee, builtin: false, order: n.order, args: n.args.map(walk) };
+        }
+        if (n.order > 0) {
+          const kind = scope.others?.get(n.callee);
+          fail(kind ? `"${n.callee}" is a ${kind}, not a function` : `No function with id "${n.callee}"`, n);
         }
         // Not callable: name(…) is implicit multiplication, e.g. x(x+1).
         if (n.args.length !== 1) fail(`"${n.callee}" is not a function`, n);
@@ -67,20 +82,26 @@ export function resolve(raw: RawNode, scope: Scope, source: string): Node {
   return walk(raw);
 }
 
-/** Ids of function elements an expression calls (for the dependency graph). */
-export function referencedFunctions(node: Node, out = new Set<string>()): Set<string> {
+/** Ids of elements an expression refers to: called functions and points (for the dependency graph). */
+export function referencedIds(node: Node, out = new Set<string>()): Set<string> {
   switch (node.type) {
     case 'neg':
-      referencedFunctions(node.arg, out);
+      referencedIds(node.arg, out);
       break;
     case 'bin':
-      referencedFunctions(node.left, out);
-      referencedFunctions(node.right, out);
+      referencedIds(node.left, out);
+      referencedIds(node.right, out);
       break;
     case 'call':
       if (!node.builtin) out.add(node.fn);
-      node.args.forEach((a) => referencedFunctions(a, out));
+      node.args.forEach((a) => referencedIds(a, out));
+      break;
+    case 'member':
+      out.add(node.id);
       break;
   }
   return out;
 }
+
+/** @deprecated use referencedIds */
+export const referencedFunctions = referencedIds;

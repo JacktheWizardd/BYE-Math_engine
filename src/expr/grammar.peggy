@@ -7,7 +7,7 @@
 //   a * b, a / b, implicit a b       (all left-assoc, same level: 1/2x = (1/2)*x)
 //   -a, +a                           (so -x^2 = -(x^2))
 //   a ^ b                            (right-assoc: 2^3^2 = 2^(3^2); exponent may be signed: 2^-x)
-//   number, name, name(args), (expr)
+//   number, name, name(args), f'(args), P.x, (expr)
 //
 // Implicit multiplication: a factor that starts with a name or "(" may follow
 // another factor directly: 2x, 3sin(x), 2(x+1), (x+1)(x-1), x sin(x), 2pi x.
@@ -54,13 +54,25 @@ Power
 Primary
   = Number
   / Apply
+  / Member
   / n:Name { const loc = location(); return { type: 'name', name: n, start: loc.start.offset, end: loc.end.offset }; }
   / "(" _ e:Additive _ ")" { return e; }
 
+// f(…), and derivatives f'(…), f''(…).
 Apply
-  = n:Name _ "(" _ args:ArgList _ ")" {
+  = n:Name primes:Primes _ "(" _ args:ArgList _ ")" {
       const loc = location();
-      return { type: 'apply', callee: n, args, start: loc.start.offset, end: loc.end.offset };
+      return { type: 'apply', callee: n, order: primes, args, start: loc.start.offset, end: loc.end.offset };
+    }
+
+Primes
+  = p:("'" / "′")* { return p.length; }
+
+// A coordinate of a point element: P.x, P.y
+Member
+  = n:Name "." axis:$("x" / "y") ![a-zA-Z0-9_] {
+      const loc = location();
+      return { type: 'member', id: n, axis, start: loc.start.offset, end: loc.end.offset };
     }
 
 ArgList

@@ -1,14 +1,28 @@
-import { Fragment } from 'react';
+import { memo } from 'react';
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
-import type { Primitive, Pt, Scene } from '../core/index.ts';
+import type { ByeTheme, Primitive, Pt, Scene } from '../core/index.ts';
 import { MathLabel, type MathLabelBackend } from './MathLabel.tsx';
 
 const n = (v: number) => (Math.round(v * 100) / 100).toString();
 const pathOf = (pts: Pt[], close = false) =>
   pts.map(([x, y], i) => `${i ? 'L' : 'M'}${n(x)} ${n(y)}`).join('') + (close ? 'Z' : '');
 
-/** Draws a scene with react-native-svg. Pure function of the scene + theme. */
-export function SceneSvg({ scene, clipId, mathBackend }: { scene: Scene; clipId: string; mathBackend?: MathLabelBackend }) {
+/**
+ * Draws a scene with react-native-svg. `primitives` defaults to the scene's own;
+ * during an animation it is the current frame. Each primitive is memoised by
+ * identity, so per frame only the animated pieces re-render.
+ */
+export function SceneSvg({
+  scene,
+  primitives = scene.primitives,
+  clipId,
+  mathBackend,
+}: {
+  scene: Scene;
+  primitives?: Primitive[];
+  clipId: string;
+  mathBackend?: MathLabelBackend;
+}) {
   const { theme, plot } = scene;
   const clip = `url(#${clipId})`;
   return (
@@ -20,16 +34,31 @@ export function SceneSvg({ scene, clipId, mathBackend }: { scene: Scene; clipId:
           <Rect x={plot.x - 2} y={plot.y - 2} width={plot.width + 4} height={plot.height + 4} />
         </ClipPath>
       </Defs>
-      {scene.primitives.map((p) => (
-        <Fragment key={p.key}>{draw(p, scene, clip, mathBackend)}</Fragment>
+      {primitives.map((p) => (
+        <PrimitiveView key={p.key} p={p} theme={theme} clip={clip} mathBackend={mathBackend} />
       ))}
     </Svg>
   );
 }
 
-function draw(p: Primitive, scene: Scene, clip: string, mathBackend?: MathLabelBackend) {
-  const style = scene.theme.roles[p.role];
+const PrimitiveView = memo(function PrimitiveView({
+  p,
+  theme,
+  clip,
+  mathBackend,
+}: {
+  p: Primitive;
+  theme: ByeTheme;
+  clip: string;
+  mathBackend?: MathLabelBackend | undefined;
+}) {
+  return draw(p, theme, clip, mathBackend);
+});
+
+function draw(p: Primitive, theme: ByeTheme, clip: string, mathBackend?: MathLabelBackend) {
+  const style = theme.roles[p.role];
   const clipPath = p.clip ? clip : undefined;
+  const opacity = p.opacity;
   switch (p.kind) {
     case 'polyline':
       if (p.points.length < 2) return null;
@@ -42,10 +71,11 @@ function draw(p: Primitive, scene: Scene, clip: string, mathBackend?: MathLabelB
           strokeLinecap="round"
           fill="none"
           clipPath={clipPath}
+          opacity={opacity}
         />
       );
     case 'polygon':
-      return <Path d={pathOf(p.points, true)} fill={style.color} fillOpacity={style.fillOpacity ?? 0.16} stroke="none" clipPath={clipPath} />;
+      return <Path d={pathOf(p.points, true)} fill={style.color} fillOpacity={style.fillOpacity ?? 0.16} stroke="none" clipPath={clipPath} opacity={opacity} />;
     case 'line': {
       const thin = p.role === 'grid' || p.role === 'axis';
       return (
@@ -58,6 +88,7 @@ function draw(p: Primitive, scene: Scene, clip: string, mathBackend?: MathLabelB
           strokeWidth={style.strokeWidth}
           strokeLinecap={thin ? 'butt' : 'round'}
           clipPath={clipPath}
+          opacity={opacity}
         />
       );
     }
@@ -68,12 +99,13 @@ function draw(p: Primitive, scene: Scene, clip: string, mathBackend?: MathLabelB
           cy={n(p.center[1])}
           r={p.r}
           fill={style.color}
-          stroke={scene.theme.background}
+          stroke={theme.background}
           strokeWidth={1.5}
+          opacity={opacity}
         />
       );
     case 'text': {
-      const fonts = scene.theme.fonts;
+      const fonts = theme.fonts;
       const family = p.font === 'note' ? fonts.note : p.font === 'mathItalic' ? fonts.mathItalic : fonts.math;
       return (
         <SvgText
@@ -83,6 +115,7 @@ function draw(p: Primitive, scene: Scene, clip: string, mathBackend?: MathLabelB
           fontFamily={family}
           fontSize={p.fontSize}
           fill={style.labelColor ?? style.color}
+          opacity={opacity}
         >
           {p.text}
         </SvgText>
@@ -90,7 +123,7 @@ function draw(p: Primitive, scene: Scene, clip: string, mathBackend?: MathLabelB
     }
     case 'mathLabel':
       return (
-        <G>
+        <G opacity={opacity}>
           <MathLabel
             tex={p.tex}
             x={p.box.x}

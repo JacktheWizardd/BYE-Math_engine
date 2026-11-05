@@ -6,6 +6,7 @@ export * from './theme.ts';
 export * from './labels.ts';
 export * from './model.ts';
 export * from './scene.ts';
+export * from './animate.ts';
 
 import { validateSpec, type Figure, type FigureIssue } from '../spec/index.ts';
 import { compileFigure, type FigureModel } from './model.ts';

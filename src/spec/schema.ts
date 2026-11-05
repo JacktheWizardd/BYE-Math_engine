@@ -27,9 +27,32 @@ const Id = z
   .string()
   .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, 'id must be letters, digits or _ and start with a letter');
 
+/** A position: [x, y] (numbers or expressions), or the id of a point element ("P"). */
+export const PointRef = z.union([Point, Id]);
+
+export const ANIMATION_KINDS = ['draw', 'fill', 'move', 'fade'] as const;
+
+/**
+ * Motion when the figure appears. `true` uses the element's default kind:
+ * draw (function, line, tangent, segment), fill (region), move (point on a curve), fade (others).
+ */
+export const Animate = z.union([
+  z.boolean(),
+  z.strictObject({
+    kind: z.enum(ANIMATION_KINDS).optional(),
+    /** ms, default 700 */
+    duration: z.number().positive().max(10000).optional(),
+    /** ms, default 0 */
+    delay: z.number().min(0).max(20000).optional(),
+    /** For "move": the x the point starts from. */
+    from: Coord.optional(),
+  }),
+]);
+
 const base = {
   id: Id.optional(),
   label: Label.optional(),
+  animate: Animate.optional(),
 };
 
 export const FunctionEl = z.strictObject({
@@ -56,7 +79,7 @@ export const PointEl = z
   .strictObject({
     ...base,
     type: z.literal('point'),
-    at: Point.optional(),
+    at: PointRef.optional(),
     on: Id.optional(),
     x: Coord.optional(),
     role: Role.default('f'),
@@ -69,8 +92,8 @@ export const PointEl = z
 export const SegmentEl = z.strictObject({
   ...base,
   type: z.literal('segment'),
-  from: Point,
-  to: Point,
+  from: PointRef,
+  to: PointRef,
   role: Role.default('bound'),
 });
 
@@ -78,8 +101,8 @@ export const LineEl = z
   .strictObject({
     ...base,
     type: z.literal('line'),
-    through: z.tuple([Point, Point]).optional(),
-    point: Point.optional(),
+    through: z.tuple([PointRef, PointRef]).optional(),
+    point: PointRef.optional(),
     slope: Coord.optional(),
     role: Role.default('f'),
   })
@@ -91,7 +114,7 @@ export const LineEl = z
 export const TextEl = z.strictObject({
   ...base,
   type: z.literal('text'),
-  at: Point,
+  at: PointRef,
   text: z.string().min(1),
   role: Role.default('note'),
 });
@@ -99,14 +122,47 @@ export const TextEl = z.strictObject({
 export const MathLabelEl = z.strictObject({
   ...base,
   type: z.literal('mathLabel'),
-  at: Point,
+  at: PointRef,
   tex: z.string().min(1),
   role: Role.default('text'),
 });
 
-export const ELEMENT_TYPES = ['function', 'region', 'point', 'segment', 'line', 'text', 'mathLabel'] as const;
+/** Tangent line to a function at x = at (full line in the view, or a segment of `length` centred on the touch point). */
+export const TangentEl = z.strictObject({
+  ...base,
+  type: z.literal('tangent'),
+  to: Id,
+  at: Coord,
+  /** Length along the line, in math units. Omit for a full line. */
+  length: z.number().positive().optional(),
+  role: Role.default('bound'),
+});
 
-export const Element = z.discriminatedUnion('type', [FunctionEl, RegionEl, PointEl, SegmentEl, LineEl, TextEl, MathLabelEl]);
+/** Point where two curves/lines meet; one id = where it meets the x-axis. */
+export const IntersectionEl = z.strictObject({
+  ...base,
+  type: z.literal('intersection'),
+  of: z.union([z.tuple([Id]), z.tuple([Id, Id])]),
+  /** Pick the hit closest to this x. */
+  near: Coord.optional(),
+  /** Otherwise pick by order, left to right (default 0). */
+  index: z.number().int().min(0).optional(),
+  role: Role.default('bound'),
+});
+
+export const ELEMENT_TYPES = ['function', 'region', 'point', 'segment', 'line', 'text', 'mathLabel', 'tangent', 'intersection'] as const;
+
+export const Element = z.discriminatedUnion('type', [
+  FunctionEl,
+  RegionEl,
+  PointEl,
+  SegmentEl,
+  LineEl,
+  TextEl,
+  MathLabelEl,
+  TangentEl,
+  IntersectionEl,
+]);
 
 export const Figure = z.strictObject({
   spec: z.literal(SPEC_VERSION).default(SPEC_VERSION),
@@ -130,6 +186,9 @@ export const Figure = z.strictObject({
 export type Role = z.infer<typeof Role>;
 export type Coord = z.infer<typeof Coord>;
 export type Point = z.infer<typeof Point>;
+export type PointRef = z.infer<typeof PointRef>;
+export type Animate = z.infer<typeof Animate>;
+export type AnimationKind = (typeof ANIMATION_KINDS)[number];
 export type Label = z.infer<typeof Label>;
 export type LabelPosition = (typeof LABEL_POSITIONS)[number];
 export type FunctionEl = z.infer<typeof FunctionEl>;
@@ -139,6 +198,8 @@ export type SegmentEl = z.infer<typeof SegmentEl>;
 export type LineEl = z.infer<typeof LineEl>;
 export type TextEl = z.infer<typeof TextEl>;
 export type MathLabelEl = z.infer<typeof MathLabelEl>;
+export type TangentEl = z.infer<typeof TangentEl>;
+export type IntersectionEl = z.infer<typeof IntersectionEl>;
 export type Element = z.infer<typeof Element>;
 export type ElementType = Element['type'];
 /** A validated figure (defaults filled in). */

@@ -19,6 +19,7 @@ import { ByeFigure } from 'bye-math-engine/native';
 
 - Bad input never crashes and is never blank: `ByeFigure` shows a box with the figure's `describe` text (and, in development, the validation errors). Pass `onError` to log them.
 - `describe` is the accessibility label.
+- Animation: elements with `animate` play once when the figure appears. Props: `animate={false}` shows the final state, change `replayKey` to replay, `onAnimationEnd`, `reduceMotion` to override the system setting. With Reduce Motion on, the final state is shown immediately. No extra dependency (a `requestAnimationFrame` clock; pass `animationDriver` to use another).
 - Fonts: the theme refers to `STIXTwoText_400Regular`, `STIXTwoText_400Regular_Italic` and `ZenKakuGothicNew_400Regular`. Load them in the host app (e.g. with `@expo-google-fonts/stix-two-text` and `@expo-google-fonts/zen-kaku-gothic-new`); without them the system font is used.
 
 Entry points:
@@ -27,8 +28,8 @@ Entry points:
 |---|---|---|
 | `bye-math-engine/spec` | zod schema, TS types, `validateSpec`, `figureJsonSchema()` | no |
 | `bye-math-engine/expr` | expression parser / compiler | no |
-| `bye-math-engine/core` | `validateFigure`, `figureToScene`, sampling, solvers, theme | no |
-| `bye-math-engine/native` | `<ByeFigure>`, `SceneSvg`, `MathLabel` | yes |
+| `bye-math-engine/core` | `validateFigure`, `figureToScene`, `timeline`/`frameAt`, sampling, solvers, theme | no |
+| `bye-math-engine/native` | `<ByeFigure>`, `SceneSvg`, `MathLabel`, `rafDriver`, `useReducedMotion` | yes |
 
 ## Figure description (spec 0)
 
@@ -55,10 +56,14 @@ Entry points:
 | `point` | `at` [x, y], or `on` (function id) + `x` |
 | `segment` | `from`, `to` |
 | `line` | `through` [p, q], or `point` + `slope` |
+| `tangent` | `to` (function id), `at` (x); optional `length` for a segment instead of a full line |
+| `intersection` | `of` [id, id] (functions, lines, tangents) or [id] (meets the x-axis); `near` (x) or `index` picks one |
 | `text` | `at`, `text` |
 | `mathLabel` | `at`, `tex` |
 
-Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`, `text`) and `label` (`text` or `tex`, plus `at`: an x value for curves/lines, or `center`, `above`, `below`, `left`, `right`, `start`, `end`). Coordinates may be numbers or expressions (`"f(1)"`, `"pi/2"`). Examples: [examples/figures](examples/figures).
+Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`, `text`), `label` (`text` or `tex`, plus `at`: an x value for curves/lines, or `center`, `above`, `below`, `left`, `right`, `start`, `end`) and `animate`. Coordinates may be numbers or expressions (`"f(1)"`, `"pi/2"`, `"P.x"`). Any position (`from`, `to`, `at`, `point`, `through`) may also be the id of a point or intersection: `"to": "B"`. Elements may refer to ones defined later; circular definitions are errors. Examples: [examples/figures](examples/figures).
+
+`animate`: `true`, or `{ "kind", "duration" (ms, 700), "delay" (ms, 0), "from" }`. Default kind by element: `draw` (function, line, tangent, segment), `fill` (region, sweeps left to right), `move` (point with `on`, glides along the curve from `from`), `fade` (everything else). An element's label fades in when it finishes; a moving point's label rides along. Use `delay` to sequence steps.
 
 ### Expressions
 
@@ -66,6 +71,8 @@ Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`,
 - `^` is right-associative; `-x^2` means `-(x^2)`.
 - Implicit multiplication: `2x`, `3sin(x)`, `2(x+1)`, `(x+1)(x-1)`, `x sin(x)`, `2pi x`. It has the same precedence as `*`, so `1/2x` is `(1/2)·x`.
 - `name(...)` is a call when `name` is a built-in or a function element id (`f(1)`); otherwise it's a product (`x(x+1)`).
+- Derivatives of function elements: `f'(x)`, `f''(2)`. Computed symbolically (chain rule through other functions); numeric only where there is no symbolic rule (`min`, `max`).
+- Point coordinates: `P.x`, `P.y` for a `point` or `intersection` with id `P`.
 - Functions: `sin cos tan sec csc cot asin acos atan (arcsin…) sinh cosh tanh sqrt cbrt abs exp ln log floor ceil round sign min max`; `log(x)` is base 10, `log(b, x)` base b. Constants `pi`, `e`.
 - Unknown names are errors with a hint (`xy` → "Did you mean x*y?", `sinx` → "sin(x)").
 - No `eval`: a Peggy grammar ([src/expr/grammar.peggy](src/expr/grammar.peggy)) builds an AST that is compiled to closures.

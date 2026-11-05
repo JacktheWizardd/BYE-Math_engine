@@ -1,0 +1,15 @@
+{
+  "spec": 0,
+  "kind": "plot2d",
+  "view": { "x": [-2.5, 2.5], "y": [-4, 6] },
+  "grid": { "x": 1, "y": 1 },
+  "axes": { "x": true, "y": true, "labels": false },
+  "elements": [
+    { "id": "f", "type": "function", "y": "x^3 - 3x", "role": "f", "label": { "tex": "f", "at": 2.15 } },
+    { "id": "fp", "type": "function", "y": "f'(x)", "role": "F", "label": { "tex": "f'", "at": 2.35 } },
+    { "id": "c", "type": "intersection", "of": ["fp"], "near": 1, "role": "bound" },
+    { "type": "tangent", "to": "f", "at": "c.x", "length": 1.6, "role": "bound" },
+    { "type": "point", "on": "f", "x": "c.x", "role": "bound", "label": { "tex": "f'(1) = 0", "at": "below" } }
+  ],
+  "describe": "f(x) = x³ − 3x and its derivative f'(x) = 3x² − 3. Where f' crosses zero (x = 1), f has a flat tangent."
+}

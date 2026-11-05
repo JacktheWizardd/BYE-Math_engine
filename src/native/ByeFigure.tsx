@@ -1,9 +1,10 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
-import { ByeLightTheme, DEFAULT_ASPECT, figureToScene, type ByeTheme, type Measure } from '../core/index.ts';
+import { ByeLightTheme, DEFAULT_ASPECT, figureToScene, frameAt, timeline, type ByeTheme, type Measure } from '../core/index.ts';
 import type { FigureIssue } from '../spec/index.ts';
 import { FigureError } from './FigureError.tsx';
 import { mathJaxBackend, type MathLabelBackend } from './MathLabel.tsx';
+import { rafDriver, useReducedMotion, type AnimationDriver } from './animation.ts';
 import { SceneSvg } from './renderScene.tsx';
 
 export interface ByeFigureProps {
@@ -19,6 +20,16 @@ export interface ByeFigureProps {
   showErrorDetails?: boolean;
   /** Swap the TeX renderer used for math labels. */
   mathBackend?: MathLabelBackend;
+  /** Play the figure's `animate` motion when it appears (default true). False shows the final state. */
+  animate?: boolean;
+  /** Change this value to play the animation again. */
+  replayKey?: unknown;
+  /** Called when the animation finishes. */
+  onAnimationEnd?: () => void;
+  /** Override the system Reduce Motion setting (true = never animate). */
+  reduceMotion?: boolean;
+  /** Clock used for animation (default: requestAnimationFrame). */
+  animationDriver?: AnimationDriver;
 }
 
 const describeOf = (figure: unknown): string | undefined => {
@@ -27,7 +38,20 @@ const describeOf = (figure: unknown): string | undefined => {
 };
 
 /** Draws a BYE Math figure natively with react-native-svg. */
-export function ByeFigure({ figure, width: fixedWidth, theme = ByeLightTheme, style, onError, showErrorDetails, mathBackend = mathJaxBackend }: ByeFigureProps) {
+export function ByeFigure({
+  figure,
+  width: fixedWidth,
+  theme = ByeLightTheme,
+  style,
+  onError,
+  showErrorDetails,
+  mathBackend = mathJaxBackend,
+  animate = true,
+  replayKey,
+  onAnimationEnd,
+  reduceMotion,
+  animationDriver = rafDriver,
+}: ByeFigureProps) {
   const [measured, setMeasured] = useState<number | null>(null);
   const width = fixedWidth ?? measured;
   const clipId = `bye-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -43,6 +67,31 @@ export function ByeFigure({ figure, width: fixedWidth, theme = ByeLightTheme, st
     return true;
   }, [result, onError]);
   void reported;
+
+  // --- animation: a clock in ms; frames are computed from the scene (pure, see core/animate.ts)
+  const systemReduce = useReducedMotion();
+  const reduce = reduceMotion ?? systemReduce;
+  const scene = result?.ok ? result.scene : null;
+  const total = scene ? timeline(scene) : 0;
+  const wantsMotion = animate && total > 0;
+  const playing = wantsMotion && reduce === false;
+  const [clock, setClock] = useState<{ ms: number; done: boolean }>({ ms: 0, done: false });
+  const endRef = useRef(onAnimationEnd);
+  endRef.current = onAnimationEnd;
+  // Layout effect: the reset to frame 0 lands before paint, so a replay never flashes the final state.
+  useLayoutEffect(() => {
+    if (!playing) return;
+    setClock({ ms: 0, done: false });
+    return animationDriver.start(
+      total,
+      (ms) => setClock({ ms, done: false }),
+      () => {
+        setClock({ ms: total, done: true });
+        endRef.current?.();
+      },
+    );
+    // Replays when the figure, its timeline or replayKey changes; not on resize.
+  }, [playing, figure, total, replayKey, animationDriver]);
 
   const onLayout = fixedWidth ? undefined : (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
@@ -69,16 +118,18 @@ export function ByeFigure({ figure, width: fixedWidth, theme = ByeLightTheme, st
       </View>
     );
   }
-  const { scene } = result;
+  const s = result.scene;
+  // Until Reduce Motion is known, hold the first frame so nothing flashes in its final state.
+  const primitives = !wantsMotion || reduce === true || clock.done ? s.primitives : frameAt(s, playing ? clock.ms : 0);
   return (
     <View
       style={containerStyle}
       onLayout={onLayout}
       accessible
       accessibilityRole="image"
-      accessibilityLabel={scene.describe}
+      accessibilityLabel={s.describe}
     >
-      <SceneSvg scene={scene} clipId={clipId} mathBackend={mathBackend} />
+      <SceneSvg scene={s} primitives={primitives} clipId={clipId} mathBackend={mathBackend} />
     </View>
   );
 }

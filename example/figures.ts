@@ -9,8 +9,18 @@ export const gallery: { title: string; figure: unknown }[] = [
   { title: 'y = tan x', figure: require('../examples/figures/07-tan.json') },
 ];
 
+export const stage2: { title: string; figure: unknown }[] = [
+  { title: 'Animated: area under f', figure: require('../examples/figures/11-area-animated.json') },
+  { title: 'Animated: point moves along f', figure: require('../examples/figures/12-point-moves.json') },
+  { title: 'Tangent at a point', figure: require('../examples/figures/08-tangent.json') },
+  { title: 'Intersections and point references', figure: require('../examples/figures/09-intersection.json') },
+  { title: "f and its derivative f'", figure: require('../examples/figures/10-derivative.json') },
+];
+
 export const badInputs: { title: string; figure: unknown }[] = [
   { title: 'Unknown element type', figure: require('../examples/bad/unknown-type.json') },
   { title: 'Invalid expression', figure: require('../examples/bad/invalid-expression.json') },
   { title: 'Region outside the view', figure: require('../examples/bad/region-outside-view.json') },
+  { title: 'Tangent where there is none', figure: require('../examples/bad/tangent-no-derivative.json') },
+  { title: 'Points defined from each other', figure: require('../examples/bad/point-cycle.json') },
 ];

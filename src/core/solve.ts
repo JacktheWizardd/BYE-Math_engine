@@ -60,6 +60,26 @@ export function findRoots(f: Fn1, a: number, b: number, grid = 512): number[] {
     x0 = x1;
     y0 = y1;
   }
+
+  // Touching roots (x² at 0, a tangent line meeting its curve) don't change sign:
+  // look for local minima of |f| on the grid and refine them with golden-section search.
+  const step = (b - a) / grid;
+  const at = (i: number) => Math.abs(f(a + step * i));
+  for (let i = 1; i < grid; i++) {
+    const [l, m, r] = [at(i - 1), at(i), at(i + 1)];
+    if (!(Number.isFinite(l) && Number.isFinite(m) && Number.isFinite(r)) || !(m <= l && m <= r)) continue;
+    let lo = a + step * (i - 1);
+    let hi = a + step * (i + 1);
+    const g = (Math.sqrt(5) - 1) / 2;
+    for (let k = 0; k < 100 && hi - lo > 1e-15 * Math.max(1, Math.abs(lo)); k++) {
+      const c = hi - g * (hi - lo);
+      const d = lo + g * (hi - lo);
+      if (Math.abs(f(c)) < Math.abs(f(d))) hi = d;
+      else lo = c;
+    }
+    const x = (lo + hi) / 2;
+    if (Math.abs(f(x)) < 1e-10) add(x);
+  }
   return roots.sort((p, q) => p - q);
 }
 

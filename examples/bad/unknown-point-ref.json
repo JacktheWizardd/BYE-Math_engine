@@ -1,0 +1,1 @@
+{ "kind": "plot2d", "view": { "x": [0, 4], "y": [0, 4] }, "elements": [ { "type": "segment", "from": [0, 0], "to": "Q" } ], "describe": "Segment to a missing point." }

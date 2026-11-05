@@ -1,0 +1,1 @@
+{ "kind": "plot2d", "view": { "x": [-1, 4], "y": [-1, 3] }, "elements": [ { "id": "f", "type": "function", "y": "sqrt(x)", "domain": [0, 4] }, { "type": "tangent", "to": "f", "at": 0 } ], "describe": "Tangent to √x at 0." }
