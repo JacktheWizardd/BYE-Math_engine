@@ -1,5 +1,5 @@
 import type { FigureIssue, Label, LabelPosition } from '../spec/index.ts';
-import { boxAt, boxBeside, centeredBox, placeLabels, type LabelRequest, type Obstacles } from './labels.ts';
+import { boxAt, boxBeside, centeredBox, placeLabels, ring, type LabelCollision, type LabelRequest, type Obstacles } from './labels.ts';
 import {
   approxMeasure,
   centroid,
@@ -31,6 +31,10 @@ import { DEFAULT_ASPECT, plotRect, toPx, type Padding, type Rect, type Vec, type
 const BASE_PAD = 6;
 const MAX_EXTRA_PAD = 60;
 const PX_LIMIT = 1e5;
+/** Gaps (px, anchor to box edge) of the farther spots tried when a note's nearby spots all cross something. */
+const NOTE_RING = [4, 10, 18, 28];
+/** Extra gaps (px, beyond a point label's usual gap) for the farther spots around a point. */
+const POINT_RING = [6, 12, 18];
 
 
 export function buildScene(model: FigureModel, opts: SceneOptions): SceneResult {
@@ -48,21 +52,23 @@ export function buildScene(model: FigureModel, opts: SceneOptions): SceneResult 
     left: BASE_PAD + Math.min(MAX_EXTRA_PAD, extra?.left ?? 0),
   });
 
-  // Pass 1 finds how far explicit labels stick out; pass 2 adds that as padding.
-  const first = layout(model, theme, measure, width, height, pad(), false);
-  if (!first.ok) return first;
-  const o = first.overflow;
-  if (o.top + o.right + o.bottom + o.left === 0) {
-    const final = layout(model, theme, measure, width, height, pad(), true);
-    return final.ok ? { ok: true, scene: final.scene } : final;
+  // Unclamped passes find how far explicit labels stick out and add that as padding. Growing the padding
+  // shrinks the plot, which moves the label too, so it can take another pass or two to fit.
+  const extra = { top: 0, right: 0, bottom: 0, left: 0 };
+  for (let pass = 0; pass < 3; pass++) {
+    const trial = layout(model, theme, measure, width, height, pad(extra), false);
+    if (!trial.ok) return trial;
+    const o = trial.overflow;
+    if (o.top + o.right + o.bottom + o.left === 0) break;
+    for (const side of ['top', 'right', 'bottom', 'left'] as const) if (o[side]) extra[side] += o[side] + 2;
   }
-  const grown = { top: o.top && o.top + 2, right: o.right && o.right + 2, bottom: o.bottom && o.bottom + 2, left: o.left && o.left + 2 };
-  const final = layout(model, theme, measure, width, height, pad(grown), true);
-  return final.ok ? { ok: true, scene: final.scene } : final;
+  const final = layout(model, theme, measure, width, height, pad(extra), true);
+  if (!final.ok) return final;
+  return { ok: true, scene: final.collisions.length ? { ...final.scene, labelCollisions: final.collisions } : final.scene };
 }
 
 type LayoutResult =
-  | { ok: true; scene: Scene; overflow: { top: number; right: number; bottom: number; left: number } }
+  | { ok: true; scene: Scene; overflow: { top: number; right: number; bottom: number; left: number }; collisions: LabelCollision[] }
   | { ok: false; errors: FigureIssue[] };
 
 function layout(
@@ -217,7 +223,7 @@ function layout(
           done += lengths[k]!;
           if (item.anim) prim.anim = strokeAnim(item.anim, span);
           prims.push(prim);
-          obstacles.strokes.push(points);
+          obstacles.strokes.push({ key: prim.key, points });
         });
         setLabelAnim(item);
         if (item.el.label) functionLabel(item, runs);
@@ -237,7 +243,7 @@ function layout(
           const head = arrowHead(b[0], b[1], b[0] - a[0], b[1] - a[1], 10);
           prims.push({ kind: 'polygon', key: `${key}-head`, role: item.el.role, clip: true, points: head, fillOpacity: 1, ...(item.anim ? { anim: { kind: 'fade', delay: item.anim.delay + item.anim.duration * 0.8, duration: item.anim.duration * 0.2 } } : {}) });
         }
-        obstacles.strokes.push([a, b]);
+        obstacles.strokes.push({ key, points: [a, b] });
         setLabelAnim(item);
         if (item.el.label) segmentLabel(item.index, item.el.label, item.el.role, a, b);
         return;
@@ -248,7 +254,7 @@ function layout(
         const a = px(seg[0]);
         const b = px(seg[1]);
         prims.push({ kind: 'line', key, role: item.el.role, clip: true, from: a, to: b, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
-        obstacles.strokes.push([a, b]);
+        obstacles.strokes.push({ key, points: [a, b] });
         setLabelAnim(item);
         if (item.el.label) {
           const at = item.el.label.at;
@@ -287,7 +293,7 @@ function layout(
         const m = measure.text(item.el.text, size, font);
         if (item.anim) labelAnims.set(key, { kind: 'fade', delay: item.anim.delay, duration: item.anim.duration });
         labels.push({
-          req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height) },
+          req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height), fallback: ring(c[0], c[1], m.width, m.height, NOTE_RING) },
           make: (box) => textPrim(key, item.el.role, item.el.text, font, size, box),
         });
         return;
@@ -297,10 +303,11 @@ function layout(
         const size = fs(theme.fontSize.tick);
         levels.forEach(({ level, lines }, k) => {
           let longest: Pt[] = [];
+          const own = lines.map((_, q) => `${key}-${k}-${q}`);
           lines.forEach((line, q) => {
             const points = line.map((p) => px(p));
-            prims.push({ kind: 'polyline', key: `${key}-${k}-${q}`, role: item.el.role, clip: true, points, width: 1.5, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
-            obstacles.strokes.push(points);
+            prims.push({ kind: 'polyline', key: own[q]!, role: item.el.role, clip: true, points, width: 1.5, ...(item.anim ? { anim: strokeAnim(item.anim, [0, 1]) } : {}) });
+            obstacles.strokes.push({ key: own[q]!, points });
             if (points.length > longest.length) longest = points;
           });
           if (item.el.labels && longest.length) {
@@ -310,7 +317,7 @@ function layout(
             const lkey = `label-${item.index}-${k}`;
             if (item.anim) labelAnims.set(lkey, { kind: 'fade', delay: item.anim.delay + item.anim.duration, duration: LABEL_FADE_MS });
             labels.push({
-              req: { key: lkey, width: m.width, height: m.height, explicit: false, candidates: nudges(mid, m.width, m.height) },
+              req: { key: lkey, width: m.width, height: m.height, explicit: false, candidates: nudges(mid, m.width, m.height), own },
               make: (box) => textPrim(lkey, item.el.role, text, 'math', size, box),
             });
           }
@@ -331,7 +338,7 @@ function layout(
         const m = measure.tex(item.el.tex, size);
         if (item.anim) labelAnims.set(key, { kind: 'fade', delay: item.anim.delay, duration: item.anim.duration });
         labels.push({
-          req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height) },
+          req: { key, width: m.width, height: m.height, explicit: false, candidates: nudges(c, m.width, m.height), fallback: ring(c[0], c[1], m.width, m.height, NOTE_RING) },
           make: (box) => ({ kind: 'mathLabel', key, role: item.el.role, clip: false, box, tex: item.el.tex, fontSize: size }),
         });
         return;
@@ -379,7 +386,7 @@ function layout(
         const q: Pt = [p[0] - t[0] * d, p[1] - t[1] * d];
         return [boxBeside(q[0], q[1], n[0], n[1], 6, w, h), boxBeside(q[0], q[1], -n[0], -n[1], 6, w, h)];
       }),
-    ], false);
+    ], { explicitAllowed: false });
   }
 
   function segmentLabel(index: number, label: Label, role: AnyRole, a: Pt, b: Pt) {
@@ -425,9 +432,16 @@ function layout(
       end: [1, 0],
       center: [1, -1],
     };
-    const first = dirs[typeof label.at === 'string' ? label.at : 'center']!;
-    const all: [number, number][] = [first, [1, -1], [-1, -1], [0, -1], [1, 1], [-1, 1], [0, 1], [1, 0], [-1, 0]];
-    addLabel(index, label, role, (w, h) => all.map(([dx, dy]) => boxBeside(c[0], c[1], dx, dy, g, w, h)));
+    const asked = typeof label.at === 'string' && label.at !== 'center';
+    const first = dirs[asked ? (label.at as string) : 'center']!;
+    const rest: [number, number][] = [[1, -1], [-1, -1], [0, -1], [1, 1], [-1, 1], [0, 1], [1, 0], [-1, 0]];
+    // A keyword ("below") keeps its side: straight below first, then below-right and below-left.
+    const sameSide = asked ? rest.filter((d) => d[0] * first[0] + d[1] * first[1] > 0 && (d[0] !== first[0] || d[1] !== first[1])) : [];
+    const all: [number, number][] = [first, ...sameSide, ...rest.filter((d) => !sameSide.includes(d))];
+    addLabel(index, label, role, (w, h) => all.map(([dx, dy]) => boxBeside(c[0], c[1], dx, dy, g, w, h)), {
+      keep: 1 + sameSide.length,
+      fallback: (w, h) => ring(c[0], c[1], w, h, POINT_RING.map((d) => g + d)),
+    });
   }
 
   /**
@@ -439,16 +453,17 @@ function layout(
     label: Label,
     role: AnyRole,
     candidates: (w: number, h: number, pos?: LabelPosition) => Rect[],
-    explicitAllowed = true,
+    { explicitAllowed = true, keep, fallback }: { explicitAllowed?: boolean; keep?: number; fallback?: (w: number, h: number) => { box: Rect }[] } = {},
   ) {
     const key = `label-${index}`;
     const explicit = explicitAllowed && typeof label.at === 'string' && label.at !== 'center';
+    const extra = (w: number, h: number) => ({ ...(keep ? { keep } : {}), ...(fallback ? { fallback: fallback(w, h) } : {}) });
     if (label.tex !== undefined) {
       const size = fs(theme.fontSize.label);
       const m = measure.tex(label.tex, size);
       const boxes = candidates(m.width, m.height, typeof label.at === 'string' ? label.at : undefined);
       labels.push({
-        req: { key, width: m.width, height: m.height, explicit, candidates: boxes.map((box) => ({ box })) },
+        req: { key, width: m.width, height: m.height, explicit, candidates: boxes.map((box) => ({ box })), ...extra(m.width, m.height) },
         make: (box) => ({ kind: 'mathLabel', key, role, clip: false, box, tex: label.tex!, fontSize: size }),
       });
       return;
@@ -459,7 +474,7 @@ function layout(
     const m = measure.text(text, size, font);
     const boxes = candidates(m.width, m.height, typeof label.at === 'string' ? label.at : undefined);
     labels.push({
-      req: { key, width: m.width, height: m.height, explicit, candidates: boxes.map((box) => ({ box })) },
+      req: { key, width: m.width, height: m.height, explicit, candidates: boxes.map((box) => ({ box })), ...extra(m.width, m.height) },
       make: (box) => textPrim(key, role, text, font, size, box),
     });
   }
@@ -468,11 +483,11 @@ function layout(
 
   // --- place labels last, against everything drawn
   const canvas: Rect = { x: 0, y: 0, width, height };
-  const { placed, overflow } = placeLabels(
+  const { placed, overflow, collisions } = placeLabels(
     labels.map((l) => l.req),
     canvas,
     obstacles,
-    { clamp },
+    { clamp, explicitOverflow: MAX_EXTRA_PAD - 2 },
   );
   placed.forEach((p, i) => {
     const prim = labels[i]!.make(p.box);
@@ -488,6 +503,7 @@ function layout(
   return {
     ok: true,
     overflow,
+    collisions,
     scene: { width, height, plot, viewport: vp, primitives: prims, describe: figure.describe, samples, theme },
   };
 }

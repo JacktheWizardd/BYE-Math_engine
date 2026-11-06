@@ -1,6 +1,6 @@
 // Shared scene types and layout helpers used by every figure kind.
 import type { FigureIssue } from '../spec/index.ts';
-import { centeredBox, type Anchor } from './labels.ts';
+import { centeredBox, type Anchor, type LabelCollision } from './labels.ts';
 import type { AnyRole, ByeTheme } from './theme.ts';
 import type { Rect, Viewport } from './view.ts';
 import type { Polyline } from './sample.ts';
@@ -96,6 +96,11 @@ export interface Scene {
    * `viewportWidth` at a time, scrolls sideways, and keeps x ∈ [0, frozenWidth] fixed on the left.
    */
   scroll?: { viewportWidth: number; frozenWidth: number };
+  /**
+   * Labels that, where they ended up, still cross a curve or line, cover a dot or overlap another label
+   * (2D plots only; set only when there are some). Content checks can fail on it.
+   */
+  labelCollisions?: LabelCollision[];
 }
 
 export interface SceneOptions {
@@ -122,7 +127,7 @@ export function textPrim(key: string, role: AnyRole, text: string, font: FontKin
 
 export function tickLabel(key: string, text: string, size: number, m: { width: number; height: number }, box: Rect) {
   return {
-    req: { key, width: m.width, height: m.height, explicit: true, candidates: [{ box }] },
+    req: { key, width: m.width, height: m.height, explicit: true, quiet: true, candidates: [{ box }] },
     make: (b: Rect) => textPrim(key, 'note', text, 'math', size, b),
   };
 }

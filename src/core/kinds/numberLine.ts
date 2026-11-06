@@ -133,7 +133,7 @@ export function numberLineScene(fig: NumberLineFigure, opts: SceneOptions): Scen
       const x0 = offLeft ? 6 : px(p.from);
       const x1 = offRight ? W - 6 : px(p.to);
       prims.push({ kind: 'line', key, role, clip: false, from: [x0, lineY], to: [x1, lineY], width: SOLUTION_WIDTH, ...withAnim(pieceAnim()) });
-      obstacles.strokes.push([[x0, lineY], [x1, lineY]]);
+      obstacles.strokes.push({ key, points: [[x0, lineY], [x1, lineY]] });
       if (offLeft) prims.push({ kind: 'polygon', key: `${key}-l`, role, clip: false, points: arrowHead(1, lineY, -1, 0, 10), fillOpacity: 1, ...withAnim(endAnim()) });
       else prims.push({ kind: 'circle', key: `${key}-a`, role, clip: false, center: [x0, lineY], r: DOT_R, hollow: !p.closedFrom, ...withAnim(endAnim()) });
       if (offRight) prims.push({ kind: 'polygon', key: `${key}-r`, role, clip: false, points: arrowHead(W - 1, lineY, 1, 0, 10), fillOpacity: 1, ...withAnim(endAnim()) });

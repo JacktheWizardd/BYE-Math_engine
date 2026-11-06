@@ -1,5 +1,7 @@
 # Hand-off: label placement lets labels cross lines
 
+**Status: fixed** on branch `claude/label-placement-f13cb9` (merged into local `main`): see `test/labels.test.ts`. Issues #1–#3 are still open on GitHub until the fix is pushed.
+
 From the BYE Math app bug hunt on 2026-11-05. Three bugs, filed as GitHub issues:
 
 - [#1](https://github.com/JacktheWizardd/BYE-Math_engine/issues/1): a keyword placement (`at: 'below'`) is abandoned when it would overflow the canvas.

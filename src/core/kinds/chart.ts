@@ -272,7 +272,7 @@ function scatterChart(fig: ScatterChart, opts: SceneOptions): SceneResult {
       const b: Pt = [xToPx(seg[1][0]), yToPx(seg[1][1])];
       const lineAnim: PrimAnim | undefined = anim ? { kind: 'draw', delay: anim.delay + fig.points.length * 40, duration: anim.duration, span: [0, 1] } : undefined;
       ctx.prims.push({ kind: 'line', key: 'fit', role: 'bound', clip: false, from: a, to: b, ...withAnim(lineAnim) });
-      ctx.obstacles.strokes.push([a, b]);
+      ctx.obstacles.strokes.push({ key: 'fit', points: [a, b] });
       if (fig.showEquation ?? true) {
         const sig = (v: number) => +v.toPrecision(3);
         const m = sig(fit.slope);

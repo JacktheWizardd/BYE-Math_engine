@@ -64,6 +64,8 @@ Entry points:
 
 Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`, `text`), `label` (`text` or `tex`, plus `at`: an x value for curves/lines, or `center`, `above`, `below`, `left`, `right`, `start`, `end`) and `animate`. Coordinates may be numbers or expressions (`"f(1)"`, `"pi/2"`, `"P.x"`). Any position (`from`, `to`, `at`, `point`, `through`) may also be the id of a point or intersection: `"to": "B"`. Elements may refer to ones defined later; circular definitions are errors. Examples: [examples/figures](examples/figures).
 
+Labels are placed clear of curves, lines, dots and each other where possible. A keyword placement (`below`) keeps its side, growing the padding if it would stick out; a hand-placed `text` moves a little, then farther, to find a clear spot. Labels that still cross something are listed in `scene.labelCollisions` (`{ key, strokes, labels, points }`), so content checks can fail on them.
+
 `animate`: `true`, or `{ "kind", "duration" (ms, 700), "delay" (ms, 0), "from" }`. Default kind by element: `draw` (function, line, tangent, segment), `fill` (region, sweeps left to right), `move` (point with `on`, glides along the curve from `from`), `fade` (everything else). An element's label fades in when it finishes; a moving point's label rides along. Use `delay` to sequence steps.
 
 ### Other figure kinds
