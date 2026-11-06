@@ -268,7 +268,7 @@ function layout(
       }
       case 'point': {
         const c = px(item.at);
-        const dot: Primitive = { kind: 'circle', key, role: item.el.role, clip: false, center: c, r: theme.pointRadius };
+        const dot: Primitive = { kind: 'circle', key, role: item.el.role, clip: false, center: c, r: theme.pointRadius, ...('open' in item.el && item.el.open ? { hollow: true } : {}) };
         if (item.anim?.kind === 'move' && item.on && item.anim.from !== undefined) {
           const from = item.anim.from;
           const run = sliceOne(runsOf.get(item.on) ?? [], Math.min(from, item.at[0]), Math.max(from, item.at[0]));

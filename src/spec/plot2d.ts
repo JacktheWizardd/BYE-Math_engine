@@ -30,6 +30,8 @@ export const PointEl = z
     at: PointRef.optional(),
     on: Id.optional(),
     x: Coord.optional(),
+    /** Open dot: a hole in the graph (the value there is not included). */
+    open: z.boolean().optional(),
     role: Role.default('f'),
   })
   .refine(

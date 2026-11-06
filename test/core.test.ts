@@ -67,6 +67,12 @@ describe('§9 exactness: reference figure', () => {
     expect(point?.type === 'point' && point.at).toEqual([3, 7]);
   });
 
+  it('point open: true draws a hollow dot (a hole in the graph); points are solid by default', () => {
+    const s = sceneOf({ ...reference, elements: [...reference.elements, { type: 'point', on: 'f', x: 3, open: true }, { type: 'point', on: 'f', x: 1 }] });
+    const dots = s.primitives.filter((p) => p.kind === 'circle');
+    expect(dots.map((d) => d.kind === 'circle' && !!d.hollow)).toEqual([true, false]);
+  });
+
   it('segment coordinate "f(1)" resolves to 3', () => {
     const r = validatePlot2d(reference);
     if (!r.ok) throw new Error();
