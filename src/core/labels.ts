@@ -162,7 +162,7 @@ const inflate = (r: Rect, d: number): Rect => ({ x: r.x - d, y: r.y - d, width: 
 
 /** Cost of a label crossing one stroke, plus `STROKE_PER_PX` for each px of the stroke inside the box. */
 const STROKE_COST = 150;
-const STROKE_PER_PX = 1.5;
+const STROKE_PER_PX = 8;
 const AXIS_COST = 25;
 const DOT_COST = 200;
 const OVERLAP_PER_PX2 = 50;
