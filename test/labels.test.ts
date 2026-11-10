@@ -189,3 +189,23 @@ describe('axis numbers give way', () => {
     }
   });
 });
+
+describe('axis numbers keep their distance', () => {
+  // The §3.2 "the question" panel (a): a grid line every 1 on y in a figure about 100 px tall.
+  const panel = {
+    spec: 0, kind: 'plot2d', view: { x: [-0.6, 4.6], y: [-2, 9] }, grid: { x: 1, y: 1 },
+    axes: { x: true, y: true, labels: true },
+    elements: [{ type: 'function', y: 'x^2 - 2x', domain: [0, 4] }],
+    describe: 'a parabola in a small panel',
+  };
+  it.each([160, 323])('no two numbers touch at width %i', (width) => {
+    const s = sceneOf(panel, width);
+    const ticks = s.primitives.filter((p): p is Extract<Primitive, { box: Rect }> => 'box' in p && p.key.startsWith('tick-'));
+    expect(ticks.length).toBeGreaterThan(2);
+    for (const a of ticks) for (const b of ticks) {
+      if (a === b) continue;
+      const apart = a.box.x + a.box.width <= b.box.x || b.box.x + b.box.width <= a.box.x || a.box.y + a.box.height <= b.box.y || b.box.y + b.box.height <= a.box.y;
+      expect(apart).toBe(true);
+    }
+  });
+});

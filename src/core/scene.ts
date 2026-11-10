@@ -182,8 +182,16 @@ function layout(
     }
     if (axes.labels) {
       const size = fs(theme.fontSize.tick);
-      const gx = figure.grid ? (figure.grid.x ?? niceStep(x1 - x0)) : niceStep(x1 - x0);
-      const gy = figure.grid ? (figure.grid.y ?? niceStep(y1 - y0)) : niceStep(y1 - y0);
+      // Numbers follow the grid, but every 2nd, 5th, 10th… line when the lines are too close for them.
+      const spread = (step: number, pxPerUnit: number, need: number) => {
+        for (const m of [1, 2, 5, 10, 20, 50, 100]) if (step * m * pxPerUnit >= need) return step * m;
+        return step * 100;
+      };
+      const pxX = Math.abs(px([x0 + 1, ay])[0] - px([x0, ay])[0]);
+      const pxY = Math.abs(px([ax, y0 + 1])[1] - px([ax, y0])[1]);
+      const widest = Math.max(...[x0, x1].map((v) => measure.text(formatNumber(v), size, 'math').width));
+      const gx = spread(figure.grid ? (figure.grid.x ?? niceStep(x1 - x0)) : niceStep(x1 - x0), pxX, widest + 8);
+      const gy = spread(figure.grid ? (figure.grid.y ?? niceStep(y1 - y0)) : niceStep(y1 - y0), pxY, size * 1.7);
       if (axes.x) {
         for (const v of ticks(x0, x1, gx)) {
           if ((v === ax && axes.y) || v === x0 || v === x1) continue; // edge ticks get cut off or collide
