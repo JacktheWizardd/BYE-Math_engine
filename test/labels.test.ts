@@ -164,3 +164,28 @@ describe('axis numbers', () => {
     expect(tickKeys(sceneOf({ ...base, axes: { x: true, y: true, labels: false } }))).toEqual([]);
   });
 });
+
+// BYE Math §4.4 "Why it works", last frame: before numbers gave way, 2, 5 and 6 sat under the region labels.
+const calc44why = {"spec":0,"kind":"plot2d","view":{"x":[-0.3,6.4],"y":[-14,13.5]},"grid":{"x":1,"y":2},"axes":{"x":true,"y":true,"labels":true},"elements":[{"id":"v","type":"function","y":"4*x - x^2","role":"f","label":{"text":"v","at":0.6}},{"id":"F","type":"function","y":"2*x^2 - x^3/3","domain":[0,6.2],"role":"F","label":{"text":"F","at":3.2}},{"type":"segment","from":[1.4,"F(2) - 2.4"],"to":[2.6,"F(2) + 2.4"],"role":"bound"},{"type":"point","at":[2,"v(2)"],"role":"bound"},{"type":"region","under":"v","from":0,"to":4,"role":"area","label":{"text":"+32/3","at":"center"}},{"type":"segment","from":[4,0],"to":[4,"F(4)"],"role":"bound","label":{"text":"F rises 32/3","at":"right"}},{"type":"region","under":"v","from":4,"to":6,"role":"bound","label":{"text":"−32/3","at":"center"}},{"type":"point","at":[6,"F(6)"],"role":"bound","label":{"text":"F(6) = 0","at":"above"}},{"id":"flip","type":"function","y":"abs(4*x - x^2)","domain":[4,6],"role":"F","animate":true},{"type":"region","under":"flip","from":4,"to":6,"role":"area","animate":true},{"type":"text","at":[3.7,8.2],"text":"distance = 64/3","role":"note","animate":true}],"describe":"The speed v(t) = 4t − t² in blue and its antiderivative F(t) = 2t² − t³/3 in green. A tangent to F has the slope v. The area above the axis is 32/3, the rise of F; the area below is −32/3, which brings F back to 0. Flipping that part up gives the distance, 64/3."};
+
+describe('axis numbers give way', () => {
+  const crowded = (labelText: string, at: [number, number]) => ({
+    spec: 0, kind: 'plot2d', view: { x: [-1, 5], y: [-2, 10] },
+    elements: [
+      { type: 'function', y: 'x^2 - 2x', domain: [0, 4] },
+      { type: 'text', at, text: labelText },
+      { type: 'point', at: [3, 0] },
+    ],
+    describe: 'a parabola with a note on the axis',
+  });
+  const hit = (a: Rect, b: Rect) => a.x < b.x + b.width - 1 && b.x < a.x + a.width - 1 && a.y < b.y + b.height - 1 && b.y < a.y + a.height - 1;
+  it.each([160, 240, 323])('no number covers a label at width %i', (width) => {
+    for (const f of [calc44why, crowded('a long note here', [2, -0.5]), { ...spot32, axes: { x: true, y: true, labels: true } }]) {
+      const s = sceneOf(f, width);
+      const boxed = s.primitives.filter((p): p is Extract<Primitive, { box: Rect }> => 'box' in p);
+      const ticks = boxed.filter((p) => p.key.startsWith('tick-'));
+      expect(ticks.length).toBeGreaterThan(0);
+      for (const t of ticks) for (const o of boxed) if (!o.key.startsWith('tick-')) expect(hit(t.box, o.box)).toBe(false);
+    }
+  });
+});

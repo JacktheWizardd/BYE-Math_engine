@@ -489,7 +489,14 @@ function layout(
     obstacles,
     { clamp, explicitOverflow: MAX_EXTRA_PAD - 2 },
   );
+  // Axis numbers give way: one that would cover another label or a dot is left out.
+  const isTick = (key: string) => key.startsWith('tick-');
+  const overlap = (a: Rect, b: Rect, pad: number) =>
+    a.x < b.x + b.width - pad && b.x < a.x + a.width - pad && a.y < b.y + b.height - pad && b.y < a.y + a.height - pad;
+  const others = placed.filter((_, i) => !isTick(labels[i]!.req.key)).map((p) => p.box);
+  const dots = prims.flatMap((p) => (p.kind === 'circle' ? [{ x: p.center[0] - p.r, y: p.center[1] - p.r, width: 2 * p.r, height: 2 * p.r }] : []));
   placed.forEach((p, i) => {
+    if (isTick(labels[i]!.req.key) && (others.some((o) => overlap(p.box, o, 1)) || dots.some((d) => overlap(p.box, d, 1.5)))) return;
     const prim = labels[i]!.make(p.box);
     const anim = labelAnims.get(prim.key);
     prims.push(anim ? { ...prim, anim } : prim);
