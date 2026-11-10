@@ -40,7 +40,7 @@ Entry points:
   "kind": "plot2d",
   "view": { "x": [0, 4], "y": [0, 9] },
   "grid": { "x": 1, "y": 2 },
-  "axes": { "x": true, "y": true, "labels": false },
+  "axes": { "x": true, "y": true, "labels": true },
   "elements": [
     { "id": "f", "type": "function", "y": "2x + 1", "label": { "text": "f", "at": 3.7 } },
     { "type": "region", "under": "f", "from": 1, "to": 3, "label": { "text": "area = 10", "at": "center" } },
@@ -63,6 +63,8 @@ Entry points:
 | `mathLabel` | `at`, `tex` |
 
 Every element takes an optional `id`, `role` (`f`, `F`, `area`, `bound`, `note`, `text`), `label` (`text` or `tex`, plus `at`: an x value for curves/lines, or `center`, `above`, `below`, `left`, `right`, `start`, `end`) and `animate`. Coordinates may be numbers or expressions (`"f(1)"`, `"pi/2"`, `"P.x"`). Any position (`from`, `to`, `at`, `point`, `through`) may also be the id of a point or intersection: `"to": "B"`. Elements may refer to ones defined later; circular definitions are errors. Examples: [examples/figures](examples/figures).
+
+Numbers along the axes are on by default; set `"axes": { "labels": false }` to hide them (or `"axes": false` to drop the axes).
 
 Labels are placed clear of curves, lines, dots and each other where possible. A keyword placement (`below`) keeps its side, growing the padding if it would stick out; a hand-placed `text` moves a little, then farther, to find a clear spot. Labels that still cross something are listed in `scene.labelCollisions` (`{ key, strokes, labels, points }`), so content checks can fail on them.
 

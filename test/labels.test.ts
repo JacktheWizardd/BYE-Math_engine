@@ -150,3 +150,17 @@ describe('label collisions in scenes', () => {
     }
   });
 });
+
+describe('axis numbers', () => {
+  const base = { spec: 0, kind: 'plot2d', view: { x: [-1, 5], y: [-2, 10] }, elements: [{ type: 'function', y: 'x^2 - 2x' }], describe: 'a parabola' };
+  const tickKeys = (s: Scene) => s.primitives.filter((p) => p.key.startsWith('tick-')).map((p) => p.key);
+
+  it('are on by default, with or without an axes entry', () => {
+    expect(tickKeys(sceneOf(base)).length).toBeGreaterThan(0);
+    expect(tickKeys(sceneOf({ ...base, axes: { x: true, y: true } })).length).toBeGreaterThan(0);
+  });
+
+  it('can still be turned off', () => {
+    expect(tickKeys(sceneOf({ ...base, axes: { x: true, y: true, labels: false } }))).toEqual([]);
+  });
+});

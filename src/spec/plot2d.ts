@@ -153,7 +153,7 @@ export const Plot2dFigure = z.strictObject({
   axes: z
     .union([
       z.literal(false),
-      z.strictObject({ x: z.boolean().default(true), y: z.boolean().default(true), labels: z.boolean().default(false) }),
+      z.strictObject({ x: z.boolean().default(true), y: z.boolean().default(true), labels: z.boolean().default(true) }),
     ])
     .optional(),
   elements: z.array(Element),

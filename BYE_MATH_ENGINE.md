@@ -60,7 +60,7 @@ THIRD_PARTY_NOTICES.md
   "kind": "plot2d",
   "view": { "x": [0, 4], "y": [0, 9] },          // math coordinates shown
   "grid": { "x": 1, "y": 2 },                    // optional grid spacing
-  "axes": { "x": true, "y": true, "labels": false },
+  "axes": { "x": true, "y": true, "labels": true },   // labels: numbers on the axes, on by default
   "elements": [
     { "id": "f",    "type": "function", "y": "2*x + 1", "role": "f", "label": { "text": "f", "at": 3.7 } },
     { "id": "area", "type": "region", "under": "f", "from": 1, "to": 3, "role": "area",

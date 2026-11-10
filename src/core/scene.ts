@@ -166,7 +166,7 @@ function layout(
   }
 
   // --- axes
-  const axes = figure.axes === false ? null : (figure.axes ?? { x: true, y: true, labels: false });
+  const axes = figure.axes === false ? null : (figure.axes ?? { x: true, y: true, labels: true });
   if (axes) {
     const ay = y0 <= 0 && 0 <= y1 ? 0 : y0;
     const ax = x0 <= 0 && 0 <= x1 ? 0 : x0;
